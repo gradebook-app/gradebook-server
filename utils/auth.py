@@ -1,7 +1,7 @@
 import jwt
 from decouple import config
 
-def decode_token(token) -> dict | None: 
+def decode_token(token):
     try: 
         jwt_token = config('JWT_TOKEN')
         data = jwt.decode(token, jwt_token, algorithms=["HS256"])
