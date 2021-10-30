@@ -1,9 +1,6 @@
-from posixpath import split
-from requests_toolbelt.utils import dump
 import requests
 from pyquery import PyQuery as pq
 import re
-from urllib import parse
 
 class GenesisService: 
     def __init__(self): 

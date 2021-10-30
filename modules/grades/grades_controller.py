@@ -1,8 +1,6 @@
 from flask import Blueprint
-from flask import request
 from modules.grades.grades_service import GradesService
 from utils.request_tools import query, genesisId
-import json 
 
 grades = Blueprint('grades', __name__)
 grades_service = GradesService()
