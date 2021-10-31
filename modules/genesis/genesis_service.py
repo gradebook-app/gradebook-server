@@ -23,7 +23,8 @@ class GenesisService:
         return [ genesisToken, userId, access ]
     
     def get_grades(self, query, genesisId): 
-        url = f"https://parents.sbschools.org/genesis/parents?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={genesisId['userId']}&mpToView=MP1"
+        markingPeriod = query['markingPeriod']
+        url = f"https://parents.sbschools.org/genesis/parents?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={genesisId['userId']}&mpToView={markingPeriod}"
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
 
@@ -32,16 +33,27 @@ class GenesisService:
         classes = parser.find('table.list')
         all_classes = list(classes.items('tr[class="listrowodd"]')) + list(classes.items('tr[class="listroweven"]'))
 
+        marking_period_options = parser.find("select[name='fldMarkingPeriod']").children("option")
+
+        marking_periods = []
+        current_marking_period = ""
+
+        for i in marking_period_options: 
+            optionTag = pq(i)
+            value = optionTag.attr("value")
+            if optionTag.attr('selected') == 'selected':
+                current_marking_period = value
+            marking_periods.append(value)
+
         classes = []
 
         for school_class in all_classes: 
             teacher = pq(school_class.children('td')[1]).remove('b').text()
             raw_grade = school_class.find("td[title='View Course Summary'] > div").text()
-            courseIdRaw = school_class.find("td[title='View Course Summary']").attr("onclick")
-        
+            courseIdRaw = school_class.find("td.cellLeft > span.categorytab").attr("onclick")
             try: 
                 courseIds = re.findall("'.*'", courseIdRaw)
-                [ courseId, sectionId ] = courseIds[0].replace("'", "").split(",")
+                [ courseId, sectionId ] = courseIds[0].split(',')[1].replace("'", "").split(":")
             except Exception: 
                 [ courseId, sectionId ] = ["", ""]
 
@@ -65,12 +77,17 @@ class GenesisService:
                 "sectionId": sectionId
             })
 
-        response = { "courses": classes }
+        response = {
+            "courses": classes, 
+            "markingPeriods": marking_periods,
+            "currentMarkingPeriod": current_marking_period,
+        }
         return response
     
     def get_assignments(self, query, genesisId): 
         studentId = genesisId['userId']
-        url = f"https://parents.sbschools.org/genesis/parents?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange=allMP&courseAndSection={query['courseId']}:{query['sectionId']}&status="
+        markingPeriod = "allMP" if query['markingPeriod'] == "FG" else query['markingPeriod'] 
+        url = f"https://parents.sbschools.org/genesis/parents?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={query['courseId']}:{query['sectionId']}&status="
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
