@@ -35,8 +35,9 @@ class GenesisService:
 
         root_url = genesis["root"]
         main_route = genesis["main"]
-
-        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={genesisId['userId']}&mpToView={markingPeriod}"
+        studentId = genesisId['email'].split("@")[0]
+     
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={studentId}&mpToView={markingPeriod}"
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
 
@@ -101,7 +102,7 @@ class GenesisService:
         root_url = genesis["root"]
         main_route = genesis["main"]
 
-        studentId = genesisId['userId']
+        studentId = genesisId['email'].split("@")[0]
         markingPeriod = "allMP" if query['markingPeriod'] == "FG" else query['markingPeriod'] 
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={query['courseId']}:{query['sectionId']}&status="
         cookies = { 'JSESSIONID': genesisId['token'] }
