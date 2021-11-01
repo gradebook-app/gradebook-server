@@ -1,21 +1,28 @@
 import requests
 from pyquery import PyQuery as pq
 import re
+from constants.genesis import genesis_config
 
 class GenesisService: 
     def __init__(self): 
         pass
 
-    def get_access_token(self, userId, password): 
-        email = f'{userId}@sbstudents.org'
-        url = 'https://parents.sbschools.org/genesis/sis/j_security_check'
+    def get_access_token(self, userId, password, school_district): 
+        genesis = genesis_config[school_district]
+
+        email_suffix = genesis['email_suffix']
+        email = f'{userId}@{email_suffix}'
+
+        root_url = genesis['root']
+        auth_route = genesis['auth']
+        url = f'{root_url}{auth_route}'
+
         data = {'j_username': email, 'j_password': password }
-        print(email, password)
         headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
         response = requests.post(url, data=data, headers=headers, allow_redirects=False)
 
         access = False
-        if response.headers['Location'].startswith("https://parents.sbschools.org:443/genesis/parents"):
+        if not response.headers['Location'].endswith(auth_route):
             access = True
 
         cookies = dict(response.cookies)
@@ -23,8 +30,13 @@ class GenesisService:
         return [ genesisToken, userId, access ]
     
     def get_grades(self, query, genesisId): 
+        genesis = genesis_config[genesisId['schoolDistrict']]
         markingPeriod = query['markingPeriod']
-        url = f"https://parents.sbschools.org/genesis/parents?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={genesisId['userId']}&mpToView={markingPeriod}"
+
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={genesisId['userId']}&mpToView={markingPeriod}"
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
 
@@ -85,9 +97,13 @@ class GenesisService:
         return response
     
     def get_assignments(self, query, genesisId): 
+        genesis = genesis_config[genesisId['schoolDistrict']]
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+
         studentId = genesisId['userId']
         markingPeriod = "allMP" if query['markingPeriod'] == "FG" else query['markingPeriod'] 
-        url = f"https://parents.sbschools.org/genesis/parents?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={query['courseId']}:{query['sectionId']}&status="
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={query['courseId']}:{query['sectionId']}&status="
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)

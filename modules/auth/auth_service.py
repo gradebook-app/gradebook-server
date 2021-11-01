@@ -7,9 +7,9 @@ class AuthService:
     def __init__(self): 
         self.genesis_service = GenesisService()
 
-    def login(self, email, password): 
-        [ genesisToken, userId, access ] = self.genesis_service.get_access_token(email, password)
-        data = { "token": genesisToken, "userId": userId }
+    def login(self, email, password, school_district): 
+        [ genesisToken, userId, access ] = self.genesis_service.get_access_token(email, password, school_district)
+        data = { "token": genesisToken, "userId": userId, "schoolDistrict":  school_district}
         accessToken = self.create_token(data)
         response = { "accessToken": accessToken, "access": access }
         return json.dumps(response)
