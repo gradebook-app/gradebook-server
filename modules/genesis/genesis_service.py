@@ -118,9 +118,13 @@ class GenesisService:
                     percentage = None
 
             points = pq(columns[5]).remove('div').text()
+            comment = pq(columns[6]).text()
+            comment = comment.replace('"', '') if comment else ""
+
             data.append({
                 "markingPeriod": marking_period,
                 "date": date,
+                "comment": comment,
                 "course": course,
                 "teacher": teacher,
                 "category": category,
