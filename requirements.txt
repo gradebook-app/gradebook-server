@@ -21,3 +21,5 @@ PyJWT==2.3.0
 pyquery==1.4.3
 python-dotenv==0.19.1
 python-decouple==3.5
+Flask-PyMongo==2.3.0
+cryptography==35.0.0

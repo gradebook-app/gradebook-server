@@ -2,7 +2,6 @@ from flask import Flask
 from config.config import config
 from mongo_config import mongodb_client
 
-
 def init_app(): 
     app = Flask(__name__, instance_relative_config=False)
 
