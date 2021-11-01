@@ -10,8 +10,8 @@ class GenesisService:
     def get_access_token(self, userId, password, school_district): 
         genesis = genesis_config[school_district]
 
-        email_suffix = genesis['email_suffix']
-        email = f'{userId}@{email_suffix}'
+        # email_suffix = genesis['email_suffix']
+        email = f'{userId}'
 
         root_url = genesis['root']
         auth_route = genesis['auth']

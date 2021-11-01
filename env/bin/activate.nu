@@ -38,4 +38,4 @@ let-env PROMPT_COMMAND = $new_prompt
 # We are using alias as the function definitions because only aliases can be
 # removed from the scope
 alias pydoc = python -m pydoc
-alias deactivate = source "/Users/mahitmehta/Desktop/Python/APIs/gradebook-api/env/bin/deactivate.nu"
+alias deactivate = source "/Users/mahitmehta/Desktop/Python/Gradebook/gradebook-api/env/bin/deactivate.nu"
