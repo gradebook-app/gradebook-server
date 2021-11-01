@@ -9,17 +9,19 @@ def init_app():
 
     mongodb_client.init_app(app)
 
+    return app
+
+app = init_app()
+
+def init_blueprints(): 
+    from modules.auth.auth_controller import auth as auth_blueprint 
+    from modules.grades.grades_controller import grades as grades_blueprint 
+    
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(grades_blueprint)
 
-    return app
-
-
 if __name__ == "__main__": 
-    from modules.auth.auth_controller import auth as auth_blueprint 
-    from modules.grades.grades_controller import grades as grades_blueprint 
-
-    app = init_app()
+    init_blueprints()
 
     @app.route('/', methods=['GET'])
     def home(): 
