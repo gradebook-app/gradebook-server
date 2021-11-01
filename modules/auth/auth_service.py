@@ -2,7 +2,7 @@ import json
 import jwt
 from modules.genesis.genesis_service import GenesisService
 from config.config import config
-from app import mongodb_client
+from mongo_config import mongodb_client
 from cryptography.fernet import Fernet
 
 class AuthService: 
