@@ -30,7 +30,7 @@ class AuthService:
                     "notificationToken": None,
                 })
                 mongoUserId = str(inserted_doc.inserted_id)
-                user = inserted_doc
+                user = user_modal.find_one({ "_id": inserted_doc.inserted_id })
             elif isinstance(doc, dict): 
                 updated_doc = user_modal.find_one_and_update(
                     { "email": email }, 
