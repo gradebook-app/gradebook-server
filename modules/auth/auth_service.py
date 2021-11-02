@@ -27,7 +27,7 @@ class AuthService:
                     "status": "active",
                     "pass": encrypted_pass,
                     "schoolDistrict": school_district,
-                    "notificationToken": None,
+                    "notificationTokens": [],
                 })
                 mongoUserId = str(inserted_doc.inserted_id)
                 user = user_modal.find_one({ "_id": inserted_doc.inserted_id })
@@ -54,7 +54,7 @@ class AuthService:
             "accessToken": accessToken, 
             "user": {
                 "_id": str(user["_id"]),
-                "notificationToken": user["notificationToken"]
+                "notificationTokens": user["notificationTokens"]
             }, 
             "access": access 
         }
