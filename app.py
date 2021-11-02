@@ -1,22 +1,42 @@
 from flask import Flask
-from config.config import config
-from mongo_config import mongodb_client
+from modules.grades.grades_service import GradesService
+from rq import Queue
+from worker import conn
+from rq_scheduler import Scheduler
+
 from modules.auth.auth_controller import auth as auth_blueprint 
 from modules.grades.grades_controller import grades as grades_blueprint 
+from modules.user.user_controller import user as user_blueprint
 
-def init_app(): 
-    app = Flask(__name__, instance_relative_config=False)
+q = Queue('default', connection=conn)
+scheduler = Scheduler(queue=q, connection=conn)
 
-    app.config["MONGO_URI"] = config["mongodb"]["uri"]
+def clear_queue():
+    for job in scheduler.get_jobs(): 
+        scheduler.cancel(job)
 
-    mongodb_client.init_app(app)
+def query_grades(): 
+    grades_service = GradesService()
+    q.enqueue_call(func=grades_service.query_grades, args=(0, ))
 
-    app.register_blueprint(auth_blueprint)
-    app.register_blueprint(grades_blueprint)
+def enqueue_processes(): 
+    scheduler.cron(
+        cron_string="*/5 * * * *",
+        func=query_grades,
+        id="query grades",
+        args=(),
+        queue_name="default",
+        use_local_timezone=False,
+    )
 
-    return app
+app = Flask(__name__, instance_relative_config=False)
 
-app = init_app()
+app.register_blueprint(auth_blueprint)
+app.register_blueprint(grades_blueprint)
+app.register_blueprint(user_blueprint)
+
+clear_queue()
+enqueue_processes()
 
 @app.route('/', methods=['GET'])
 def home(): 

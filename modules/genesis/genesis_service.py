@@ -62,6 +62,12 @@ class GenesisService:
 
         for school_class in all_classes: 
             teacher = pq(school_class.children('td')[1]).remove('b').text()
+            
+            final_grade = str()
+            final_grade_raw = pq(school_class.children('td')[2]).find("table tr > td").text()
+            if not "no grades" in final_grade_raw.lower(): 
+                final_grade = final_grade_raw.split("%")[0]
+
             raw_grade = school_class.find("td[title='View Course Summary'] > div").text()
             courseIdRaw = school_class.find("td.cellLeft > span.categorytab").attr("onclick")
             try: 
@@ -78,12 +84,13 @@ class GenesisService:
 
             class_name = school_class.find("span.categorytab > font > u").text()
             grade_letter = school_class.find("td[title='View Course Summary'] ~ td").text()
-        
+
             classes.append({
                 "teacher": teacher,
                 "grade": {
                     "percentage": grade,
                     "letter": grade_letter,
+                    "projected": bool(final_grade),
                 },
                 "name": class_name,
                 "courseId": courseId,

@@ -1,6 +1,7 @@
 config = {
     "mongodb": {
-        "uri": "mongodb://localhost:27017/gradebook-dev"
+        "uri": "mongodb://localhost:27017/gradebook-dev",
+        "db": "gradebook-dev"
     },
     "jwt": {
         "token": "djedekdledkedk"

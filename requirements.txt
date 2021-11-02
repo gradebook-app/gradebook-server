@@ -24,3 +24,4 @@ python-decouple==3.5
 Flask-PyMongo==2.3.0
 cryptography==35.0.0
 dnspython==2.1.0
+rq==1.10.0
