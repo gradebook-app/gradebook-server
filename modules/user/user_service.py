@@ -10,8 +10,8 @@ class UserService:
         user_modal = db.get_collection("users")
         user_modal.find_one_and_update(
             { "_id": ObjectId(userId) },
-            { "$push": { 
-                "notificationTokens": token,
+            { "$set": { 
+                "notificationToken": token,
             }}
         )
         
