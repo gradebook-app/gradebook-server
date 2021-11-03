@@ -36,7 +36,7 @@ class GradesService:
 
         for course in courses: 
             percentage = course['grade']['percentage']
-            if (percentage != 0): 
+            if (percentage and percentage != 0): 
                 points = gpa_standard_points(percentage)
                 gpa_unweighted_total += points
 
