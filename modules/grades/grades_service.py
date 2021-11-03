@@ -24,7 +24,10 @@ class GradesService:
 
     def caculate_gpa(self, genesisId): 
         response = self.query_user_grade(genesisId)
+
         courses = response[1]
+        weights = response[2]
+
         if courses and len(courses) > 0: 
             courses = np.array(courses).flatten()
         else: 
@@ -33,27 +36,36 @@ class GradesService:
         gpa_unweighted_total = 0
         gpa_weighted_total = 0
         excluded_courses = 0
+        course_points = 0
 
         for course in courses: 
             percentage = course['grade']['percentage']
-            if (percentage and percentage != 0): 
-                points = gpa_standard_points(percentage)
-                gpa_unweighted_total += points
 
+            if (percentage and percentage != 0): 
                 name = course["name"]
+
+                for weight in weights: 
+                    if weight['name'] == name: 
+                        course_points += weight['weight'] if weight['weight'] else 0
+                        course_weight = weight['weight'] if weight['weight'] else 1
+
+                points = gpa_standard_points(percentage)
+                gpa_unweighted_total += (points * course_weight) 
+
                 if name.lower().split().__contains__('honor') or name.lower().split().__contains__('honors'):
                     weighted_point = gpa_honors_points(percentage)
                 elif name.lower().split().__contains__('ap'):
                     weighted_point = gpa_ap_points(percentage)
                 else: 
                     weighted_point = gpa_standard_points(percentage)
-                gpa_weighted_total += weighted_point
+                gpa_weighted_total += (weighted_point * course_weight)
 
             else:
                 excluded_courses += 1
 
-        final_gpa_weighted = gpa_weighted_total / (len(courses) - excluded_courses)
-        final_gpa_unweighted = gpa_unweighted_total / (len(courses) - excluded_courses)
+        divisor = course_points if course_points > 0 else (len(courses) - excluded_courses)
+        final_gpa_weighted = gpa_weighted_total / divisor
+        final_gpa_unweighted = gpa_unweighted_total / divisor
 
         return {
             "unweightedGPA": final_gpa_unweighted,
@@ -144,9 +156,16 @@ class GradesService:
         
         grades = genesis_service.get_grades(query, genesisId)
         mps = grades['markingPeriods']
+        current_mp = grades['currentMarkingPeriod']
+        mps.remove(current_mp)
   
         all_mp_grades = []
         all_mp_coures = []
+
+        all_mp_grades.append(grades)
+        all_mp_coures.append(grades['courses'])
+        
+        course_weights = genesis_service.course_weights(genesisId)
 
         for mp in mps:   
             if not mp.lower().strip() == "fg": 
@@ -155,7 +174,7 @@ class GradesService:
                 all_mp_grades.append(mp_grades)
                 all_mp_coures.append(mp_grades["courses"])
         
-        return ( all_mp_grades, all_mp_coures )
+        return ( all_mp_grades, all_mp_coures, course_weights )
 
     def query_and_save_grades(self, user):
         genesisId = self.authenticate_user(user)

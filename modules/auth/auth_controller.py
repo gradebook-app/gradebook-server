@@ -10,3 +10,8 @@ auth_service = AuthService()
 def login(body): 
     userId, password, school_district = (body['userId'], body['pass'], body['schoolDistrict'])
     return auth_service.login(userId, password, school_district)
+
+@auth.route('/auth/logout', methods=['POST'])
+@body
+def logout(body): 
+    return True

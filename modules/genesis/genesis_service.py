@@ -159,3 +159,35 @@ class GenesisService:
                 }
             })
         return data
+    
+    def course_weights(self, genesisId): 
+        genesis = genesis_config[genesisId['schoolDistrict']]
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+
+        studentId = genesisId['email'].split("@")[0]
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=grading&tab3=current&action=form&studentid={studentId}"
+        cookies = { 'JSESSIONID': genesisId['token'] }
+
+        response = requests.get(url, cookies=cookies)
+        html = pq(response.text)
+        table = html.find('table.list')
+        rows = table.children('tr:not([class="listheading"])')
+
+        courses = []
+
+        for row in rows: 
+            columns = pq(row).children('td')
+            name = pq(columns[0]).text()
+            teacher = pq(columns[3]).text()
+
+            weight = pq(columns[-2]).text()
+            weight = float(weight.strip()) if weight else None
+
+            courses.append({
+                "name": name,
+                "teacher": teacher,
+                "weight": weight,
+            })
+        
+        return courses
