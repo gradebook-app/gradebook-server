@@ -36,7 +36,7 @@ app.register_blueprint(grades_blueprint)
 app.register_blueprint(user_blueprint)
 
 clear_queue()
-query_grades()
+# query_grades()
 
 @app.route('/', methods=['GET'])
 def home(): 

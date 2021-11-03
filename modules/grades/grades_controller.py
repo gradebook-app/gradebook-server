@@ -16,3 +16,8 @@ def getGrades(query, genesisId):
 @genesisId
 def getAssignments(query, genesisId): 
     return grades_service.assignments(query, genesisId)
+
+@grades.route("/grades/gpa", methods=["GET"])
+@genesisId
+def getGPA(genesisId): 
+    return grades_service.caculate_gpa(genesisId)
