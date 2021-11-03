@@ -28,3 +28,4 @@ rq==1.10.0
 rq_scheduler==0.11.0
 redis==3.5.3
 Flask-RQ2==18.3
+numpy==1.21.3
