@@ -1,6 +1,6 @@
 from flask import Blueprint
 from modules.auth.auth_service import AuthService
-from utils.request_tools import body
+from utils.request_tools import body, genesisId
 
 auth = Blueprint('auth', __name__)
 auth_service = AuthService()
@@ -12,6 +12,6 @@ def login(body):
     return auth_service.login(userId, password, school_district)
 
 @auth.route('/auth/logout', methods=['POST'])
-@body
-def logout(body): 
-    return True
+@genesisId
+def logout(genesisId): 
+    return auth_service.logout(genesisId)

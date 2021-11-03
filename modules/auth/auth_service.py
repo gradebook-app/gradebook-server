@@ -4,11 +4,25 @@ from modules.genesis.genesis_service import GenesisService
 from config.config import config
 from mongo_config import db
 from cryptography.fernet import Fernet
+from bson import ObjectId
 
 class AuthService: 
     def __init__(self): 
         self.genesis_service = GenesisService()
         self.fernet = Fernet(config["fernet"]["key"].encode())
+
+    def logout(self, genesisId): 
+        userId = genesisId['userId']
+        user_modal = db.get_collection("users")
+        user_modal.update_one({
+            "_id": ObjectId(userId),
+        }, {
+            "$set": { 
+                "notificationToken": None,
+                "status": "inactive",
+            }
+        })
+        return {}
 
     def login(self, email, password, school_district): 
         user_modal = db.get_collection("users")
