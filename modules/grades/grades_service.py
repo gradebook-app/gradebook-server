@@ -7,6 +7,9 @@ from modules.genesis.genesis_service import GenesisService
 from modules.auth.auth_service import AuthService
 import numpy as np
 from utils.gpa_points import gpa_ap_points, gpa_honors_points, gpa_standard_points
+from modules.expo.expo_service import ExpoService
+from bson import ObjectId
+import time
 
 q = Queue(connection=conn)
 
@@ -21,10 +24,32 @@ class GradesService:
     def assignments(self, query, genesisId): 
         response = self.genesisService.get_assignments(query, genesisId)
         return { "assignments": response }
+    
+    def save_gpa(self, user, unweighted=None, weighted=None, past=None): 
+        user_modal = db.get_collection("users")
 
-    def caculate_gpa(self, genesisId): 
+        user_modal.update({
+            "_id": ObjectId(user["_id"])
+        }, {
+            "$set": {
+                "unweightedGPA": unweighted,
+                "weightedGPA": weighted,
+                "pastGPA": past
+            }
+        })
+
+    def query_live_gpa(self, genesisId): 
         response = self.query_user_grade(genesisId)
+        gpa = self.caculate_gpa(response)
 
+        user = { "_id": genesisId["userId"] }
+        unweighted = gpa["unweightedGPA"]
+        weighted = gpa["weightedGPA"]
+        q.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
+
+        return gpa
+
+    def caculate_gpa(self, response): 
         courses = response[1]
         weights = response[2]
 
@@ -96,6 +121,53 @@ class GradesService:
                     "courseId": course_stored["courseId"],
                 })
 
+    def send_grade_update(self, user, course, previous_percent, current_percent): 
+        expo_service = ExpoService()
+        notificationToken = user['notificationToken']
+
+        if not notificationToken: return
+
+        equality = "increased" if current_percent > previous_percent else "decreased"
+        name = course["name"]
+        message = f"Grade for {name} {equality} from {previous_percent}% to {current_percent}%"
+
+        expo_service.send_push_notification(notificationToken, message, extra=None)
+        
+    def send_gpa_update(self, user, gpa): 
+        expo_service = ExpoService()
+        notificationToken = user['notificationToken']
+
+        round_gpa = lambda x: round(x * (10 ** 4)) / (10 ** 4)
+
+        unweighted_user = round_gpa(user["unweightedGPA"])
+        weighted_user = round_gpa(user["weightedGPA"])
+
+        current_unweighted = round_gpa(gpa["unweightedGPA"])
+        current_weighted = round_gpa(gpa["weightedGPA"])
+
+        if not notificationToken: return
+
+        message = f"Unweighted GPA went from {unweighted_user} to {current_unweighted} and weighted GPA went from {weighted_user} to {current_weighted}."
+        expo_service.send_push_notification(notificationToken, message, extra=None)
+
+        gpa_modal = db.get_collection("gpa-history")
+        gpa_modal.insert_one({
+            "userId": ObjectId(user["_id"]),
+            "unweightedGPA": user["unweightedGPA"],
+            "weightedGPA": user["weightedGPA"],
+            "timestamp": time.time()
+        })
+
+        user_modal = db.get_collection("users")
+        user_modal.update_one({
+            "_id": ObjectId(user["_id"]),
+        }, {
+            "$set": {
+                "unweightedGPA": gpa["unweightedGPA"],
+                "weightedGPA": gpa["weightedGPA"],
+            }
+        })
+
     def save_grades(self, user, grades):
         grade_modal = db.get_collection("grades")
         mp = grades['currentMarkingPeriod']
@@ -122,7 +194,7 @@ class GradesService:
                 previous_percent = change["grade"]["percentage"]
                 current_percent = course["grade"]["percentage"] 
                 if not previous_percent == current_percent: 
-                    print("Grade Change") # send notification 
+                    q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
 
         self.cleanup_classes(user, grades)
     
@@ -182,6 +254,12 @@ class GradesService:
   
         if response is None: 
             return
+
+        gpa = self.caculate_gpa(response)
+        unweighted = user["unweightedGPA"]
+
+        if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
+            q.enqueue(f=self.send_gpa_update, args=(user, gpa))
         
         all_mp_grades = response[0]
 

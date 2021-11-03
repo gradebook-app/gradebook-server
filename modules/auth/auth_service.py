@@ -4,7 +4,9 @@ from modules.genesis.genesis_service import GenesisService
 from config.config import config
 from mongo_config import db
 from cryptography.fernet import Fernet
-from bson import ObjectId
+from bson import ObjectId, json_util
+import time
+import datetime
 
 class AuthService: 
     def __init__(self): 
@@ -28,9 +30,7 @@ class AuthService:
         user_modal = db.get_collection("users")
 
         [ genesisToken, userId, access ] = self.genesis_service.get_access_token(email, password, school_district)
-        mongoUserId = str()
-
-        user = None
+        user = {} 
 
         if access: 
             encrypted_pass = self.encrypt_password(password) 
@@ -42,9 +42,11 @@ class AuthService:
                     "pass": encrypted_pass,
                     "schoolDistrict": school_district,
                     "notificationToken": None,
+                    "unweightedGPA": None,
+                    "pastGPA": None,
+                    "weightedGPA": None,
                 })
-                mongoUserId = str(inserted_doc.inserted_id)
-                user = user_modal.find_one({ "_id": inserted_doc.inserted_id })
+                mongoUserId = inserted_doc.inserted_id
             elif isinstance(doc, dict): 
                 updated_doc = user_modal.find_one_and_update(
                     { "email": email }, 
@@ -54,25 +56,54 @@ class AuthService:
                         }
                     }
                 )
-                user = updated_doc
-                mongoUserId = str(updated_doc["_id"])
+                mongoUserId = ObjectId(updated_doc['_id'])
+
+
+            year = datetime.datetime.now().year
+            month = datetime.datetime.now().month
+            time_to_query = f"01/09/{year}" if 9 <= month <= 12 else f"01/09/{year - 1}"
+            time_in_seconds = time.mktime(datetime.datetime.strptime(time_to_query,"%d/%m/%Y").timetuple())
+
+            user = user_modal.aggregate([
+                {
+                    "$match": { "_id":  mongoUserId },
+                },
+                {
+                    "$lookup": {
+                        "from": "gpa-history",
+                        "let": { "userId": "$_id" },
+                        "pipeline": [
+                            {
+                                "$match": {
+                                    "$expr": {
+                                        "$and": [
+                                            { "$eq": [ "$userId", "$$userId" ] },
+                                            { "$gte": [ "$timestamp", time_in_seconds ] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        "as": "gpaHistory"
+                    }
+                },
+            ])
+        
+        user = list(user)[0]
 
         data = { 
             "token": genesisToken, 
             "email": userId, 
             "schoolDistrict":  school_district, 
-            "userId": mongoUserId
+            "userId": str(mongoUserId)
         }
         accessToken = self.create_token(data)
         response = { 
             "accessToken": accessToken, 
-            "user": {
-                "_id": str(user["_id"]),
-                "notificationToken": user["notificationToken"]
-            }, 
+            "user": user if user else {},
             "access": access 
         }
-        return json.dumps(response)
+        return json_util.dumps(response)
     
     def encrypt_password(self, text): 
         encrypted_credential = self.fernet.encrypt(text.encode())
