@@ -1,42 +1,28 @@
 from flask import Flask
-from modules.grades.grades_service import GradesService
 from rq import Queue
 from worker import conn
 from rq_scheduler import Scheduler
+from modules.redis.grades import schedule_grade_persisting
 
-from modules.auth.auth_controller import auth as auth_blueprint 
-from modules.grades.grades_controller import grades as grades_blueprint 
-from modules.user.user_controller import user as user_blueprint
-
-q = Queue('default', connection=conn)
+q = Queue(connection=conn)
 scheduler = Scheduler(queue=q, connection=conn)
 
 def clear_queue():
     for job in scheduler.get_jobs(): 
         scheduler.cancel(job)
 
-def query_grades(): 
-    grades_service = GradesService()
-    q.enqueue_call(func=grades_service.query_grades, args=(0, ))
+from modules.auth.auth_controller import auth as auth_blueprint 
+from modules.grades.grades_controller import grades as grades_blueprint 
+from modules.user.user_controller import user as user_blueprint
 
-def enqueue_processes(): 
-    scheduler.cron(
-        cron_string="*/5 * * * *",
-        func=query_grades,
-        id="query grades",
-        args=(),
-        queue_name="default",
-        use_local_timezone=False,
-    )
+clear_queue()
+schedule_grade_persisting()
 
 app = Flask(__name__, instance_relative_config=False)
 
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(grades_blueprint)
 app.register_blueprint(user_blueprint)
-
-clear_queue()
-query_grades()
 
 @app.route('/', methods=['GET'])
 def home(): 

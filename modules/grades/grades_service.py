@@ -1,4 +1,3 @@
-from types import coroutine
 from pymongo.collection import ReturnDocument
 from rq import Queue
 from worker import conn
@@ -10,8 +9,10 @@ from utils.gpa_points import gpa_ap_points, gpa_honors_points, gpa_standard_poin
 from modules.expo.expo_service import ExpoService
 from bson import ObjectId
 import time
+from rq_scheduler import Scheduler
 
 q = Queue(connection=conn)
+scheduler = Scheduler(queue=q, connection=conn)
 
 class GradesService: 
     def __init__(self): 
@@ -283,3 +284,4 @@ class GradesService:
 
         if next_skip != 0: 
             q.enqueue_call(func=self.query_grades, args=(next_skip,))
+
