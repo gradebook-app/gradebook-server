@@ -26,7 +26,7 @@ class AuthService:
         })
         return {}
 
-    def login(self, email, password, school_district): 
+    def login(self, email, password, school_district, notificationToken): 
         user_modal = db.get_collection("users")
 
         [ genesisToken, userId, access ] = self.genesis_service.get_access_token(email, password, school_district)
@@ -41,7 +41,7 @@ class AuthService:
                     "status": "active",
                     "pass": encrypted_pass,
                     "schoolDistrict": school_district,
-                    "notificationToken": None,
+                    "notificationToken": notificationToken,
                     "unweightedGPA": None,
                     "pastGPA": None,
                     "weightedGPA": None,
@@ -52,7 +52,8 @@ class AuthService:
                     { "email": email }, 
                     { "$set": { 
                             "status": "active",
-                            "pass": encrypted_pass
+                            "pass": encrypted_pass,
+                            "notificationToken": notificationToken,
                         }
                     }
                 )
