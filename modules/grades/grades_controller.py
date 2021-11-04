@@ -21,3 +21,8 @@ def getAssignments(query, genesisId):
 @genesisId
 def getGPA(genesisId): 
     return grades_service.query_live_gpa(genesisId)
+
+@grades.route("/grades/pastGPA", methods=["GET"])
+@genesisId
+def getPastGPA(genesisId): 
+    return grades_service.query_past_grades(genesisId)

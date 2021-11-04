@@ -2,6 +2,7 @@ import requests
 from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
+from utils.grade import grade
 
 class GenesisService: 
     def __init__(self): 
@@ -191,3 +192,100 @@ class GenesisService:
             })
         
         return courses
+
+    def account_details(self, genesisId): 
+        genesis = genesis_config[genesisId['schoolDistrict']]
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+
+        studentId = genesisId['email'].split("@")[0]
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=form&studentid={studentId}"
+        cookies = { 'JSESSIONID': genesisId['token'] }
+
+        response = requests.get(url, cookies=cookies)
+        html = pq(response.text)
+
+        rows = html.find("td:nth-child(1) > table.list:nth-child(1)").children("tr")
+        lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
+        locker = pq(rows[7]).find("td:nth-child(2)").text()
+
+        rows = html.find("td:nth-child(2) > table.list:nth-child(1)").children("tr")
+        name = pq(rows[0]).find("td:nth-child(1)").text()
+        
+        grade = pq(pq(rows[0]).find("td:nth-child(2)").children("span")[1]).text()
+        studentId = pq(rows[1]).find("td > span:nth-child(1)").text()
+        stateId = pq(rows[1]).find("td > span:nth-child(2)").text()
+        school = pq(rows[1]).find("td").remove("span").html().split("|")[0].strip()
+
+        try: 
+            grade = int(grade)
+        except Exception: 
+            grade= None
+
+        return {
+            "name": name,
+            "grade": grade,
+            "studentId": studentId,
+            "stateId": stateId,
+            "school": school,
+            "lunchBalance": lunchBalance,
+            "locker": locker,
+        }
+
+    def query_past_grades(self, genesisId): 
+        genesis = genesis_config[genesisId['schoolDistrict']]
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+
+        studentId = genesisId['email'].split("@")[0]
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=grading&tab3=history&action=form&studentid={studentId}"
+        cookies = { 'JSESSIONID': genesisId['token'] }
+
+        response = requests.get(url, cookies=cookies)
+        html = pq(response.text)
+
+        table = html.find('table.list')
+        rows = table.children('tr:not([class="listheading"])')
+
+        past_grades = {}
+        weights = {}
+
+        for row in rows: 
+            columns = pq(row).children("td")
+            gradeLevel = None
+
+            if len(columns) > 1: 
+                year = pq(columns[0]).text()
+                gradeLevel = pq(columns[1]).text()
+
+                if (gradeLevel):
+                    try:
+                        gradeLevel = int(gradeLevel)
+                    except ValueError: 
+                        gradeLevel = None
+                else: gradeLevel = None
+
+            if not gradeLevel is None: 
+                name = pq(columns[2]).text()
+                gradeLetter = pq(columns[4]).text()
+                pointsEarned = pq(columns[-1]).text()
+                
+                if gradeLevel and gradeLevel >= 9:
+                    if not past_grades.keys().__contains__(gradeLevel): 
+                        past_grades[gradeLevel] = []
+                        weights[gradeLevel] = []
+
+                    past_grades[gradeLevel].append({
+                        "grade": {
+                            "percentage": grade(gradeLetter),
+                            "grade": gradeLetter,
+                        },
+                        "name": name,
+                        "year": year,
+                    })
+                    weights[gradeLevel].append({
+                        "weight": float(pointsEarned),
+                        "name": name,
+                    })
+        
+        return [ past_grades, weights ]

@@ -50,6 +50,22 @@ class GradesService:
 
         return gpa
 
+    def query_past_grades(self, genesisId):
+        response = self.genesisService.query_past_grades(genesisId)
+        courses = response[0]
+        weights = response[1]
+        gpas = []
+
+        for key in courses.keys(): 
+            gradeCourses = courses[key]
+            gradeWeights = weights[key]
+            calculated_gpa = self.caculate_gpa([ None, gradeCourses, gradeWeights ])
+            gpas.append({
+                **calculated_gpa, "gradeLevel": key, "year": courses[key][0]["year"],
+            })
+
+        return { "pastGradePointAverages": gpas }
+
     def caculate_gpa(self, response): 
         courses = response[1]
         weights = response[2]

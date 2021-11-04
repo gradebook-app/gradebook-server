@@ -5,5 +5,6 @@ genesis_config = {
         "login": "/sis/view?gohome=true",
         "auth": "/sis/j_security_check",
         "main": "/parents"
-    } 
+    },
+    
 }

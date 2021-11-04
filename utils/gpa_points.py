@@ -1,4 +1,3 @@
-
 def gpa_standard_points(percentage):
     if percentage >= 93: 
         return 4

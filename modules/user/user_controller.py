@@ -6,6 +6,11 @@ user = Blueprint('user', __name__)
 
 user_service = UserService()
 
+@user.route("/user/account", methods=["GET"])
+@genesisId
+def get_user_account(genesisId): 
+    return user_service.get_user_account(genesisId)
+
 @user.route('/user/setNotificationToken', methods=['POST'])
 @body
 @genesisId

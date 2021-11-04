@@ -1,9 +1,10 @@
 from mongo_config import db
 from bson import ObjectId
+from modules.genesis.genesis_service import GenesisService
 
 class UserService: 
     def __init__(self): 
-        pass
+        self.genesisService = GenesisService()
 
     def set_notification_token(self, token, genesisId):
         userId = genesisId["userId"]
@@ -15,4 +16,6 @@ class UserService:
             }}
         )
         return {}
-        
+    
+    def get_user_account(self, genesisId): 
+        return self.genesisService.account_details(genesisId)
