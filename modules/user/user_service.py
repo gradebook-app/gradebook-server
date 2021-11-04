@@ -14,4 +14,5 @@ class UserService:
                 "notificationToken": token,
             }}
         )
+        return {}
         
