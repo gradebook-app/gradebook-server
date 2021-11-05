@@ -6,5 +6,11 @@ genesis_config = {
         "auth": "/sis/j_security_check",
         "main": "/parents"
     },
-    
+    "mtsdstudent.us": {
+        "root":"https://parents.mtsd.k12.nj.us/genesis",
+        "email_suffix": "mtsdstudent.us",
+        "login":"/sis/view?gohome=true",
+        "auth":"/sis/j_security_check",
+        "main":"/parents"
+    }
 }
