@@ -226,7 +226,7 @@ class GradesService:
         
         dycrypted_password = auth_service.dyscrypt_password(password).decode()
   
-        [ genesisToken, email, access ] = genesis_service.get_access_token(email, dycrypted_password, school_district)
+        [ genesisToken, email, access, studentId ] = genesis_service.get_access_token(email, dycrypted_password, school_district)
 
         if not access: return None
     
@@ -234,6 +234,7 @@ class GradesService:
             "schoolDistrict": school_district, 
             "token": genesisToken,
             "email": email,
+            "studentId": studentId,
         }
 
         return genesisId
