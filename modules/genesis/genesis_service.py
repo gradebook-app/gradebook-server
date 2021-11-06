@@ -3,6 +3,7 @@ from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
 from utils.grade import grade
+from urllib.parse import urlparse, parse_qs
 
 class GenesisService: 
     def __init__(self): 
@@ -28,7 +29,15 @@ class GenesisService:
 
         cookies = dict(response.cookies)
         genesisToken = cookies['JSESSIONID']
-        return [ genesisToken, userId, access ]
+
+        studentId = None
+
+        if access: 
+            login_res = requests.get(response.headers['Location'], cookies=cookies )
+            login_url_params = parse_qs(urlparse(login_res.url).query)
+            studentId = login_url_params['studentid'][0]
+
+        return [ genesisToken, userId, access, studentId ]
     
     def get_grades(self, query, genesisId): 
         genesis = genesis_config[genesisId['schoolDistrict']]
@@ -36,9 +45,10 @@ class GenesisService:
 
         root_url = genesis["root"]
         main_route = genesis["main"]
-        studentId = genesisId['email'].split("@")[0]
+        studentId = genesisId['studentId']
      
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={studentId}&mpToView={markingPeriod}"
+  
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
 
@@ -66,11 +76,12 @@ class GenesisService:
             
             final_grade = str()
             final_grade_raw = pq(school_class.children('td')[2]).find("table tr > td").text()
-            if not "no grades" in final_grade_raw.lower(): 
+            if not "no grades" in final_grade_raw.lower() and not "not graded" in final_grade_raw.lower(): 
                 final_grade = final_grade_raw.split("%")[0]
 
             raw_grade = school_class.find("td[title='View Course Summary'] > div").text()
             courseIdRaw = school_class.find("td.cellLeft > span.categorytab").attr("onclick")
+    
             try: 
                 courseIds = re.findall("'.*'", courseIdRaw)
                 [ courseId, sectionId ] = courseIds[0].split(',')[1].replace("'", "").split(":")
@@ -89,9 +100,9 @@ class GenesisService:
             classes.append({
                 "teacher": teacher,
                 "grade": {
-                    "percentage": grade,
+                    "percentage": grade if grade else final_grade,
                     "letter": grade_letter,
-                    "projected": bool(final_grade),
+                    "projected": bool(final_grade), # Doesn't work for Montegomery
                 },
                 "name": class_name,
                 "courseId": courseId,
@@ -110,7 +121,7 @@ class GenesisService:
         root_url = genesis["root"]
         main_route = genesis["main"]
 
-        studentId = genesisId['email'].split("@")[0]
+        studentId = genesisId['studentId']
         markingPeriod = "allMP" if query['markingPeriod'] == "FG" else query['markingPeriod'] 
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={query['courseId']}:{query['sectionId']}&status="
         cookies = { 'JSESSIONID': genesisId['token'] }
@@ -138,7 +149,7 @@ class GenesisService:
 
             if gradeDivs.length: 
                 try: 
-                    percentage = int(pq(gradeDivs[-1]).remove('div').text()[:-1])
+                    percentage = float(pq(gradeDivs[-1]).remove('div').text()[:-1])
                 except ValueError: 
                     percentage = None
 
@@ -166,7 +177,7 @@ class GenesisService:
         root_url = genesis["root"]
         main_route = genesis["main"]
 
-        studentId = genesisId['email'].split("@")[0]
+        studentId = genesisId['studentId']
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=grading&tab3=current&action=form&studentid={studentId}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
@@ -198,7 +209,7 @@ class GenesisService:
         root_url = genesis["root"]
         main_route = genesis["main"]
 
-        studentId = genesisId['email'].split("@")[0]
+        studentId = genesisId['studentId']
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=form&studentid={studentId}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
@@ -237,7 +248,7 @@ class GenesisService:
         root_url = genesis["root"]
         main_route = genesis["main"]
 
-        studentId = genesisId['email'].split("@")[0]
+        studentId = genesisId['studentId']
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=grading&tab3=history&action=form&studentid={studentId}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
@@ -270,6 +281,11 @@ class GenesisService:
                 gradeLetter = pq(columns[4]).text()
                 pointsEarned = pq(columns[-1]).text()
                 
+                try: 
+                    percent = float(gradeLetter)
+                except ValueError: 
+                    percent = None
+
                 if gradeLevel and gradeLevel >= 9:
                     if not past_grades.keys().__contains__(gradeLevel): 
                         past_grades[gradeLevel] = []
@@ -277,8 +293,8 @@ class GenesisService:
 
                     past_grades[gradeLevel].append({
                         "grade": {
-                            "percentage": grade(gradeLetter),
-                            "grade": gradeLetter,
+                            "percentage": percent if percent else grade(gradeLetter),
+                            "grade": percent if percent else gradeLetter,
                         },
                         "name": name,
                         "year": year,
@@ -288,4 +304,5 @@ class GenesisService:
                         "name": name,
                     })
         
+        print(past_grades)
         return [ past_grades, weights ]

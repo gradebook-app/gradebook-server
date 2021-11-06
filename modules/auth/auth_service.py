@@ -29,7 +29,7 @@ class AuthService:
     def login(self, email, password, school_district, notificationToken): 
         user_modal = db.get_collection("users")
 
-        [ genesisToken, userId, access ] = self.genesis_service.get_access_token(email, password, school_district)
+        [ genesisToken, userId, access, studentId ] = self.genesis_service.get_access_token(email, password, school_district)
         user = {} 
 
         if access: 
@@ -40,6 +40,7 @@ class AuthService:
                     "email": email,
                     "status": "active",
                     "pass": encrypted_pass,
+                    "studentId": studentId,
                     "schoolDistrict": school_district,
                     "notificationToken": notificationToken,
                     "unweightedGPA": None,
@@ -96,7 +97,8 @@ class AuthService:
             "token": genesisToken, 
             "email": userId, 
             "schoolDistrict":  school_district, 
-            "userId": str(mongoUserId)
+            "userId": str(mongoUserId),
+            "studentId": studentId,
         }
         accessToken = self.create_token(data)
         response = { 
