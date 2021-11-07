@@ -91,22 +91,24 @@ class AuthService:
                 },
             ])
         
-        user = list(user)[0]
+            user = list(user)[0]
 
-        data = { 
-            "token": genesisToken, 
-            "email": userId, 
-            "schoolDistrict":  school_district, 
-            "userId": str(mongoUserId),
-            "studentId": studentId,
-        }
-        accessToken = self.create_token(data)
-        response = { 
-            "accessToken": accessToken, 
-            "user": user if user else {},
-            "access": access 
-        }
-        return json_util.dumps(response)
+            data = { 
+                "token": genesisToken, 
+                "email": userId, 
+                "schoolDistrict":  school_district, 
+                "userId": str(mongoUserId),
+                "studentId": studentId,
+            }
+            accessToken = self.create_token(data)
+            response = { 
+                "accessToken": accessToken, 
+                "user": user if user else {},
+                "access": access 
+            }
+            return json_util.dumps(response)
+        else: 
+            return { "access": False }
     
     def encrypt_password(self, text): 
         encrypted_credential = self.fernet.encrypt(text.encode())

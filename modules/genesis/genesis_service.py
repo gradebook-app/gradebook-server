@@ -4,6 +4,7 @@ import re
 from constants.genesis import genesis_config
 from utils.grade import grade
 from urllib.parse import urlparse, parse_qs
+from flask import Response
 
 class GenesisService: 
     def __init__(self): 
@@ -39,6 +40,12 @@ class GenesisService:
 
         return [ genesisToken, userId, access, studentId ]
     
+    def access_granted(self, response): 
+        title = pq(response.text).find("title").text()
+        if "login" in title.lower(): 
+            return False
+        else: return True
+
     def get_grades(self, query, genesisId): 
         genesis = genesis_config[genesisId['schoolDistrict']]
         markingPeriod = query['markingPeriod']
@@ -51,6 +58,10 @@ class GenesisService:
   
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response): return Response(
+            "Session Expired",
+            401,
+        )
 
         html = response.text
         parser = pq(html)
@@ -127,6 +138,11 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response): return Response(
+            "Session Expired",
+            401,
+        )
+
         html = response.text
         parser = pq(html)
         table = parser.find('table.list')
@@ -182,6 +198,11 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response): return Response(
+            "Session Expired",
+            401,
+        )
+
         html = pq(response.text)
         table = html.find('table.list')
         rows = table.children('tr:not([class="listheading"])')
@@ -214,6 +235,11 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response): return Response(
+            "Session Expired",
+            401,
+        )
+
         html = pq(response.text)
 
         rows = html.find("td:nth-child(1) > table.list:nth-child(1)").children("tr")
@@ -253,6 +279,11 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response): return Response(
+            "Session Expired",
+            401,
+        )
+        
         html = pq(response.text)
 
         table = html.find('table.list')
@@ -304,5 +335,4 @@ class GenesisService:
                         "name": name,
                     })
         
-        print(past_grades)
         return [ past_grades, weights ]

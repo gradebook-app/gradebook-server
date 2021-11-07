@@ -1,4 +1,5 @@
 from pymongo.collection import ReturnDocument
+from flask import Response
 from rq import Queue
 from worker import conn
 from mongo_config import db
@@ -24,6 +25,9 @@ class GradesService:
     
     def assignments(self, query, genesisId): 
         response = self.genesisService.get_assignments(query, genesisId)
+        if isinstance(response, Response):
+            return response
+
         return { "assignments": response }
     
     def save_gpa(self, user, unweighted=None, weighted=None, past=None): 
@@ -41,6 +45,10 @@ class GradesService:
 
     def query_live_gpa(self, genesisId): 
         response = self.query_user_grade(genesisId)
+
+        if isinstance(response, Response):
+            return response
+
         gpa = self.caculate_gpa(response)
 
         user = { "_id": genesisId["userId"] }
@@ -52,6 +60,10 @@ class GradesService:
 
     def query_past_grades(self, genesisId):
         response = self.genesisService.query_past_grades(genesisId)
+        if isinstance(response, Response):
+            return response
+
+
         courses = response[0]
         weights = response[1]
         gpas = []
@@ -246,6 +258,10 @@ class GradesService:
         query = { "markingPeriod": "" }
         
         grades = genesis_service.get_grades(query, genesisId)
+
+        if isinstance(grades, Response):
+            return grades
+
         mps = grades['markingPeriods']
         current_mp = grades['currentMarkingPeriod']
         mps.remove(current_mp)
