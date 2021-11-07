@@ -12,7 +12,7 @@ class AuthService:
     def __init__(self): 
         self.genesis_service = GenesisService()
         self.fernet = Fernet(config["fernet"]["key"].encode())
-
+      
     def logout(self, genesisId): 
         userId = genesisId['userId']
         user_modal = db.get_collection("users")
