@@ -161,7 +161,7 @@ class GradesService:
         name = course["name"]
         message = f"Grade for {name} {equality} from {previous_percent}% to {current_percent}%"
 
-        fcm_service.send_message(token=notificationToken, message=message, title=f'Grade {equality.capitalize()}')
+        fcm_service.send_message(token=notificationToken, message=message, title=name)
         
     def send_gpa_update(self, user, gpa): 
         fcm_service = FCMService()
@@ -178,7 +178,7 @@ class GradesService:
         if not notificationToken: return
 
         message = f"Unweighted GPA went from {unweighted_user} to {current_unweighted} and weighted GPA went from {weighted_user} to {current_weighted}."
-        fcm_service.send_message(token=notificationToken, message=message, title=f'GPA Change')
+        fcm_service.send_message(token=notificationToken, message=message, title=f'GPA Update')
 
         gpa_modal = db.get_collection("gpa-history")
         gpa_modal.insert_one({
