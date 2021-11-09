@@ -12,6 +12,6 @@ config = {
         "key": config('FERNET_KEY')
     },
     "fcm": {
-        "key": config['FCM_TOKEN']
+        "key": config('FCM_TOKEN')
     }
 }

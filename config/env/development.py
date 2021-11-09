@@ -12,6 +12,6 @@ config = {
         "key": "9V-3EF5gOsgm2bBJpdC8d1ucJ-01GNgKObLLgS-Guuc="
     },
     "fcm": {
-        "key": config['FCM_TOKEN']
+        "key": config('FCM_TOKEN')
     }
 }
