@@ -7,7 +7,7 @@ from modules.genesis.genesis_service import GenesisService
 from modules.auth.auth_service import AuthService
 import numpy as np
 from utils.gpa_points import gpa_ap_points, gpa_honors_points, gpa_standard_points
-from modules.expo.expo_service import ExpoService
+from modules.firebase.fcm_service import FCMService
 from bson import ObjectId
 import time
 from rq_scheduler import Scheduler
@@ -152,7 +152,7 @@ class GradesService:
                 })
 
     def send_grade_update(self, user, course, previous_percent, current_percent): 
-        expo_service = ExpoService()
+        fcm_service = FCMService()
         notificationToken = user['notificationToken']
 
         if not notificationToken: return
@@ -161,10 +161,10 @@ class GradesService:
         name = course["name"]
         message = f"Grade for {name} {equality} from {previous_percent}% to {current_percent}%"
 
-        expo_service.send_push_notification(notificationToken, message, extra=None)
+        fcm_service.send_message(token=notificationToken, message=message, title=f'Grade {equality.capitalize()}')
         
     def send_gpa_update(self, user, gpa): 
-        expo_service = ExpoService()
+        fcm_service = FCMService()
         notificationToken = user['notificationToken']
 
         round_gpa = lambda x: round(x * (10 ** 4)) / (10 ** 4)
@@ -178,7 +178,7 @@ class GradesService:
         if not notificationToken: return
 
         message = f"Unweighted GPA went from {unweighted_user} to {current_unweighted} and weighted GPA went from {weighted_user} to {current_weighted}."
-        expo_service.send_push_notification(notificationToken, message, extra=None)
+        fcm_service.send_message(token=notificationToken, message=message, title=f'GPA Change')
 
         gpa_modal = db.get_collection("gpa-history")
         gpa_modal.insert_one({

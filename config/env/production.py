@@ -10,5 +10,8 @@ config = {
     },
     "fernet": {
         "key": config('FERNET_KEY')
+    },
+    "fcm": {
+        "key": "AAAAa3is4iE:APA91bGQ0A6xAzV0lU__X-ILrCqGCZhJOsqew-4a0rRxPer6igq47EvYm-hsqdKurUwr08Ce8Kq0Dfi9HSpvpyZjvadZwSpoEkdoy5J7yalBzeyg2YLKeN0tAahvq-oYM0vhdLvX-qU7"
     }
 }

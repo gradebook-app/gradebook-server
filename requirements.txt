@@ -30,3 +30,5 @@ redis==3.5.3
 Flask-RQ2==18.3
 numpy==1.21.3
 exponent_server_sdk==2.0.0
+txFCM==0.0.1
+pyfcm==1.5.2
