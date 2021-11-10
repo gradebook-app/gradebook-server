@@ -1,3 +1,2 @@
-web: gunicorn app:app
 scheduler: rqscheduler --url $REDISTOGO_URL
 worker: python worker.py
