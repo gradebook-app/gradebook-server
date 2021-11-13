@@ -133,8 +133,19 @@ class GenesisService:
         main_route = genesis["main"]
 
         studentId = genesisId['studentId']
+
         markingPeriod = "allMP" if query['markingPeriod'] == "FG" else query['markingPeriod'] 
-        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={query['courseId']}:{query['sectionId']}&status="
+        courseId = query['courseId']
+        sectionId = query['sectionId']
+
+        course_and_section = f"{courseId}:{sectionId}" if courseId and sectionId else ""
+        
+        try: 
+            status = query['status'] if "status" in dict(query).keys() else ""
+        except KeyError: 
+            status = ""
+
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={course_and_section}&status={status}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
