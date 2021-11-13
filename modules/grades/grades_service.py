@@ -8,9 +8,10 @@ from modules.auth.auth_service import AuthService
 import numpy as np
 from utils.gpa_points import gpa_ap_points, gpa_honors_points, gpa_standard_points
 from modules.firebase.fcm_service import FCMService
-from bson import ObjectId
+from bson import ObjectId, json_util
 import time
 from rq_scheduler import Scheduler
+import json
 
 q = Queue(connection=conn)
 scheduler = Scheduler(queue=q, connection=conn)
@@ -151,6 +152,14 @@ class GradesService:
                     "courseId": course_stored["courseId"],
                 })
 
+    def send_assignment_update(self, token, assignment): 
+        fcm_service = FCMService()
+
+        title = f"{assignment['course']} \nAssignment Update"
+        message = f"Scored {int(assignment['grade']['percentage'])}% on {assignment['name']}"
+
+        fcm_service.send_message(token=token, message=message, title=title)
+
     def send_grade_update(self, user, course, previous_percent, current_percent): 
         fcm_service = FCMService()
         notificationToken = user['notificationToken']
@@ -283,8 +292,7 @@ class GradesService:
         
         return ( all_mp_grades, all_mp_coures, course_weights )
 
-    def query_and_save_grades(self, user):
-        genesisId = self.authenticate_user(user)
+    def query_and_save_grades(self, genesisId, user):
         response = self.query_user_grade(genesisId)
   
         if response is None: 
@@ -301,21 +309,161 @@ class GradesService:
         for mp_grades in all_mp_grades:
             self.save_grades(user, mp_grades)
 
-    def query_grades(self, skip): 
-        limit = 100
+    def save_persist_time(self, persist_time): 
         user_modal = db.get_collection("users")
-        response = user_modal.find({ "status": "active" }).limit(limit).skip(skip)
+        user_modal.update_many({ "status": "active" }, { "$set": {
+            "lastPersistTimestamp": persist_time,
+        }})
+
+    def clean_assignments(self, userId, assignments): 
+        assignment_model = db.get_collection("assignments")
+
+        ids = []
+
+        for i in assignments: 
+            ids.append(ObjectId(i['_id']))
+
+        assignment_model.delete_many({
+            "userId": userId,
+            "_id": { "$in": ids },
+        })
+    
+    def store_assignments(self, user, assignments, send_notifications):
+        assignment_model = db.get_collection("assignments")
+        
+        docs = []
+
+        for i in assignments: 
+            docs.append({
+                "userId": user['_id'],
+                "name": i['name'],
+                "course": i['course'],
+                "markingPeriod": i['markingPeriod'],
+                "category": i['category'],
+                "date": i['date'],
+                "grade": {
+                    "percentage": i['grade']['percentage'],
+                    "points": i['grade']['points'],
+                },
+            })
+
+        try: 
+            assignment_model.insert_many(docs)
+
+            token = user['notificationToken']
+            if not token or token is None or not send_notifications: return 
+            for assignment_notificatinon in docs[:3]:
+                q.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon))
+        except Exception: 
+            pass
+
+    def find_assignments(self, all_assignments, assignments):
+        docs = []
+
+        for i in all_assignments:
+            for j in assignments: 
+                if i['name'] == json_util.loads(j)['name']: 
+                    docs.append(i)
+                
+        return docs
+
+    def persist_assignments(self, user, persist_time):
+        assignments = user['assignments']
+        genesis_service = GenesisService()
+
+        genesisId = self.authenticate_user(user)
+        
+        if genesisId is None: 
+            return 
+        
+        query = { "markingPeriod": "allMP", "courseId": "", "sectionId": "", "status": "GRADED" }
+        response = genesis_service.get_assignments(query, genesisId)
+        
+        serialized_new_assignments = []
+        serialized_stored_assignments = []
+    
+        for i in response: 
+            serialized_new_assignments.append(json.dumps({
+                "name": i['name'],
+                "course": i['course'],
+                "markingPeriod": i['markingPeriod'],
+                "category": i['category'],
+                "date": i['date'],
+                "percentage": i['grade']['percentage'],
+                "points": i['grade']['points'],
+                "userId": json_util.dumps(user["_id"])
+            }))
+
+        for i in assignments: 
+            serialized_stored_assignments.append(json.dumps({
+                "name": i['name'],
+                "course": i['course'],
+                "markingPeriod": i['markingPeriod'],
+                "category": i['category'],
+                "date": i['date'],
+                "percentage": i['grade']['percentage'],
+                "points": i['grade']['points'],
+                "userId": json_util.dumps(i["userId"])
+            }))
+
+        try: 
+            last_persist_timestamp = user['lastPersistTimestamp']
+        except KeyError:
+            last_persist_timestamp = 0 
+
+        elapsed_time = int(persist_time - last_persist_timestamp)
+        send_notification = elapsed_time < (60 * 60 * 6)
+
+        if len(assignments): 
+            new_assignments = set(serialized_new_assignments) - set(serialized_stored_assignments)
+            removed_assignments = set(serialized_stored_assignments) - set(serialized_new_assignments)
+            if len(new_assignments):
+                new_assignments = self.find_assignments(response, list(new_assignments))
+                q.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification))
+                q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+
+            if len(removed_assignments): 
+                removed_assignments = self.find_assignments(assignments, list(removed_assignments))
+                q.enqueue_call(func=self.clean_assignments, args=(user['_id'], removed_assignments, ))
+        else: 
+            send_notification = False
+            q.enqueue_call(func=self.store_assignments, args=(user, response, send_notification))
+
+    def query_grades(self, skip): 
+        persist_time = time.time()
+
+        limit = 25 # find optimal number of users to query at once
+        user_modal = db.get_collection("users")
+        response = user_modal.aggregate([
+            {
+                "$match": { "status": "active" }
+            },
+            {
+                "$lookup": {
+                    "from": "assignments",
+                    "localField": "_id",
+                    "foreignField": "userId",
+                    "as": "assignments",
+                }
+            },
+            {
+                "$limit": limit,
+            },
+            {
+                "$skip": skip,
+            }
+        ])
         next_skip = skip + limit
 
         docs = list(response)
         returned_total = len(docs)
-
+   
         for doc in list(docs): 
-            q.enqueue_call(func=self.query_and_save_grades, args=(doc,))
+            q.enqueue_call(func=self.persist_assignments, args=(doc, persist_time))
 
         if returned_total == 0: 
+            q.enqueue_call(func=self.save_persist_time, args=(persist_time,))
             next_skip = 0
 
         if next_skip != 0: 
             q.enqueue_call(func=self.query_grades, args=(next_skip,))
-
