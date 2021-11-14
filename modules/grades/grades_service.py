@@ -12,6 +12,9 @@ from bson import ObjectId, json_util
 import time
 from rq_scheduler import Scheduler
 import json
+from constants.genesis import genesis_config
+from requests_futures.sessions import FuturesSession
+from concurrent.futures import as_completed
 
 q = Queue(connection=conn)
 scheduler = Scheduler(queue=q, connection=conn)
@@ -25,7 +28,9 @@ class GradesService:
         return response
     
     def assignments(self, query, genesisId): 
-        response = self.genesisService.get_assignments(query, genesisId)
+        token = genesisId['token']
+        url = self.genesisService.get_assignments_url(query, genesisId)
+        response = self.genesisService.get_assignments(url, token)
         if isinstance(response, Response):
             return response
 
@@ -236,8 +241,8 @@ class GradesService:
                     q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
 
         self.cleanup_classes(user, grades)
-    
-    def authenticate_user(self, user): 
+
+    def get_authentication_request(self, user): 
         email = user['email']
         school_district = user['schoolDistrict']
         password = user['pass']
@@ -246,21 +251,10 @@ class GradesService:
         genesis_service = GenesisService()
         
         dycrypted_password = auth_service.dyscrypt_password(password).decode()
-  
-        [ genesisToken, email, access, studentId ] = genesis_service.get_access_token(email, dycrypted_password, school_district)
-
-        if not access: return None
-    
-        genesisId = { 
-            "schoolDistrict": school_district, 
-            "token": genesisToken,
-            "email": email,
-            "studentId": studentId,
-        }
-
-        return genesisId
-
-
+        [ url, data, headers ] = genesis_service.get_access_token_request(email, dycrypted_password, school_district)
+        
+        return [ url, data, headers ]
+   
     def query_user_grade(self, genesisId): 
         genesis_service = GenesisService()
 
@@ -366,18 +360,60 @@ class GradesService:
                     docs.append(i)
                 
         return docs
+    
+    def get_assignments(self, users, persist_time):
+        auth_session = FuturesSession()
 
-    def persist_assignments(self, user, persist_time):
+        requests = []
+        for user in users: 
+            [ url, data, headers ] = self.get_authentication_request(user)
+            requests.append(( url, data, headers ))
+
+        futures = [ auth_session.post(url=url, data=data, headers=headers, allow_redirects=False) for url, data, headers, in requests ]
+        auth_responses = [ future.result() for future in as_completed(futures) ]
+        auth_session.close()
+        
+        authenticated_users = []
+
+        for user, auth_response in zip(users, auth_responses): 
+            try: 
+                school_district = user['schoolDistrict']
+                genesis = genesis_config[school_district]
+                auth_route = genesis['auth']
+                headers = auth_response.headers
+                access = False
+                if not headers['Location'].endswith(auth_route):
+                    access = True
+                if access: 
+                    genesisId = { 
+                        "schoolDistrict": school_district, 
+                        "token": dict(auth_response.cookies)['JSESSIONID'],
+                        "email": user['email'],
+                        "studentId": user['studentId'],
+                    }
+                    authenticated_users.append((user, genesisId))
+            except KeyError: pass
+        
+        assignment_session = FuturesSession()
+
+        genesis_service = GenesisService()
+        requests = []
+        for user, genesisId in authenticated_users: 
+            query = { "markingPeriod": "allMP", "courseId": "", "sectionId": "", "status": "GRADED".upper() }
+            requests.append((genesis_service.get_assignments_url(query, genesisId), genesisId['token']))
+        
+        assignment_tasks = [ assignment_session.get(url=url, cookies={'JSESSIONID': token }) for url, token in requests ]
+        assignment_responses = [ future.result() for future in as_completed(assignment_tasks) ]
+        assignment_session.close()
+
+        for authenticated_user, response in zip(authenticated_users, assignment_responses):
+            user, genesisId = authenticated_user
+            q.enqueue_call(self.persist_assignments, args=(user, genesisId, response, persist_time))
+
+    def persist_assignments(self, user, genesisId, response, persist_time):
         assignments = user['assignments']
         genesis_service = GenesisService()
-
-        genesisId = self.authenticate_user(user)
-        
-        if genesisId is None: 
-            return 
-        
-        query = { "markingPeriod": "allMP", "courseId": "", "sectionId": "", "status": "GRADED" }
-        response = genesis_service.get_assignments(query, genesisId)
+        response = genesis_service.parse_assignments(response)
         
         serialized_new_assignments = []
         serialized_stored_assignments = []
@@ -421,6 +457,8 @@ class GradesService:
                 new_assignments = self.find_assignments(response, list(new_assignments))
                 q.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification))
                 q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+            elif not len(new_assignments) and not len(user['grades']):
+                q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
             if len(removed_assignments): 
                 removed_assignments = self.find_assignments(assignments, list(removed_assignments))
@@ -428,11 +466,14 @@ class GradesService:
         else: 
             send_notification = False
             q.enqueue_call(func=self.store_assignments, args=(user, response, send_notification))
+        
+        if not len(assignments) and not len(user['grades']):
+            q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
     def query_grades(self, skip): 
         persist_time = time.time()
 
-        limit = 25 # find optimal number of users to query at once
+        limit = 20
         user_modal = db.get_collection("users")
         response = user_modal.aggregate([
             {
@@ -447,6 +488,14 @@ class GradesService:
                 }
             },
             {
+                "$lookup": {
+                    "from": "grades",
+                    "localField": "_id",
+                    "foreignField": "userId",
+                    "as": "grades",
+                }
+            },
+            {
                 "$limit": limit,
             },
             {
@@ -458,8 +507,8 @@ class GradesService:
         docs = list(response)
         returned_total = len(docs)
    
-        for doc in list(docs): 
-            q.enqueue_call(func=self.persist_assignments, args=(doc, persist_time))
+        if returned_total: 
+            q.enqueue_call(func=self.get_assignments, args=(list(docs), persist_time,))
 
         if returned_total == 0: 
             q.enqueue_call(func=self.save_persist_time, args=(persist_time,))
