@@ -29,7 +29,8 @@ class AuthService:
     def login(self, email, password, school_district, notificationToken): 
         user_modal = db.get_collection("users")
 
-        [ genesisToken, userId, access, studentId ] = self.genesis_service.get_access_token(email, password, school_district)
+        [ url, data, headers ] = self.genesis_service.get_access_token_request(email, password, school_district)
+        [ genesisToken, userId, access, studentId ] = self.genesis_service.get_access_token(email, url, data, headers, school_district)
         user = {} 
 
         if access: 
@@ -52,6 +53,7 @@ class AuthService:
                 updated_doc = user_modal.find_one_and_update(
                     { "email": email }, 
                     { "$set": { 
+                            "studentId": studentId,
                             "status": "active",
                             "pass": encrypted_pass,
                             "notificationToken": notificationToken,

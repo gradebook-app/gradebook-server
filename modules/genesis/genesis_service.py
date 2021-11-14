@@ -10,10 +10,8 @@ class GenesisService:
     def __init__(self): 
         pass
 
-    def get_access_token(self, userId, password, school_district): 
+    def get_access_token_request(self, userId, password, school_district): 
         genesis = genesis_config[school_district]
-
-        # email_suffix = genesis['email_suffix']
         email = f'{userId}'
 
         root_url = genesis['root']
@@ -22,6 +20,11 @@ class GenesisService:
 
         data = {'j_username': email, 'j_password': password }
         headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
+        return [ url, data, headers ]
+
+    def get_access_token(self, userId, url, data, headers, school_district): 
+        genesis = genesis_config[school_district]
+        auth_route = genesis['auth']
         response = requests.post(url, data=data, headers=headers, allow_redirects=False)
 
         access = False
@@ -126,34 +129,8 @@ class GenesisService:
             "currentMarkingPeriod": current_marking_period,
         }
         return response
-    
-    def get_assignments(self, query, genesisId): 
-        genesis = genesis_config[genesisId['schoolDistrict']]
-        root_url = genesis["root"]
-        main_route = genesis["main"]
 
-        studentId = genesisId['studentId']
-
-        markingPeriod = "allMP" if query['markingPeriod'] == "FG" else query['markingPeriod'] 
-        courseId = query['courseId']
-        sectionId = query['sectionId']
-
-        course_and_section = f"{courseId}:{sectionId}" if courseId and sectionId else ""
-        
-        try: 
-            status = query['status'] if "status" in dict(query).keys() else ""
-        except KeyError: 
-            status = ""
-
-        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={course_and_section}&status={status}"
-        cookies = { 'JSESSIONID': genesisId['token'] }
-
-        response = requests.get(url, cookies=cookies)
-        if not self.access_granted(response): return Response(
-            "Session Expired",
-            401,
-        )
-
+    def parse_assignments(self, response):
         html = response.text
         parser = pq(html)
         table = parser.find('table.list')
@@ -197,6 +174,37 @@ class GenesisService:
                     "percentage": percentage,
                 }
             })
+        return data
+
+    def get_assignments_url(self, query, genesisId):
+        genesis = genesis_config[genesisId['schoolDistrict']]
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+
+        studentId = genesisId['studentId']
+
+        markingPeriod = "allMP" if query['markingPeriod'] == "FG" else query['markingPeriod'] 
+        courseId = query['courseId']
+        sectionId = query['sectionId']
+
+        course_and_section = f"{courseId}:{sectionId}" if courseId and sectionId else ""
+        
+        try: 
+            status = query['status'] if "status" in dict(query).keys() else ""
+        except KeyError: 
+            status = ""
+
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={course_and_section}&status={status}"
+        return url
+
+    def get_assignments(self, url, token): 
+        cookies = { 'JSESSIONID': token }
+        response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response): return Response(
+            "Session Expired",
+            401,
+        )
+        data = self.parse_assignments(response)
         return data
     
     def course_weights(self, genesisId): 
