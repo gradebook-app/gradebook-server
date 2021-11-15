@@ -35,8 +35,15 @@ class GenesisService:
 
         if access: 
             login_res = requests.get(response.headers['Location'], cookies=cookies )
-            login_url_params = parse_qs(urlparse(login_res.url).query)
-            studentId = login_url_params['studentid'][0]
+            html = pq(login_res.text)
+            rows = html.find("td:nth-child(2) > table.list:nth-child(1)").children("tr")
+            studentId = pq(rows[1]).find("td > span:nth-child(1)").text()
+            try: 
+                login_url_params = parse_qs(urlparse(login_res.url).query)
+                studentId_parameter = login_url_params['studentid'][0]
+                if studentId is None and studentId_parameter: studentId = studentId_parameter
+            except Exception: 
+                pass
 
         return [ genesisToken, userId, access, studentId ]
     
