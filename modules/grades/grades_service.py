@@ -12,6 +12,7 @@ from bson import ObjectId, json_util
 import time
 from rq_scheduler import Scheduler
 import json
+from modules.grades.aggregations.user_aggregation import user_aggregation
 
 q = Queue(connection=conn)
 scheduler = Scheduler(queue=q, connection=conn)
@@ -438,33 +439,7 @@ class GradesService:
 
         limit = 25 # find optimal number of users to query at once
         user_modal = db.get_collection("users")
-        response = user_modal.aggregate([
-            {
-                "$match": { "status": "active" }
-            },
-            {
-                "$lookup": {
-                    "from": "assignments",
-                    "localField": "_id",
-                    "foreignField": "userId",
-                    "as": "assignments",
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "grades",
-                    "localField": "_id",
-                    "foreignField": "userId",
-                    "as": "grades",
-                }
-            },
-            {
-                "$limit": limit,
-            },
-            {
-                "$skip": skip,
-            }
-        ])
+        response = user_modal.aggregate(user_aggregation(limit, skip))
         next_skip = skip + limit
 
         docs = list(response)
