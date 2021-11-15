@@ -32,7 +32,3 @@ numpy==1.21.3
 exponent_server_sdk==2.0.0
 txFCM==0.0.1
 pyfcm==1.5.2
-grequests==0.6.0
-requests-futures==1.0.0
-requests-threads==0.1.1
-Twisted==21.7.0
