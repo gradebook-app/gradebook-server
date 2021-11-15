@@ -421,6 +421,8 @@ class GradesService:
                 new_assignments = self.find_assignments(response, list(new_assignments))
                 q.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification))
                 q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+            elif not len(new_assignments) and not len(user['grades']):
+                q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
             if len(removed_assignments): 
                 removed_assignments = self.find_assignments(assignments, list(removed_assignments))
@@ -428,6 +430,8 @@ class GradesService:
         else: 
             send_notification = False
             q.enqueue_call(func=self.store_assignments, args=(user, response, send_notification))
+        if not len(assignments) and not len(user['grades']):
+            q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
     def query_grades(self, skip): 
         persist_time = time.time()
@@ -444,6 +448,14 @@ class GradesService:
                     "localField": "_id",
                     "foreignField": "userId",
                     "as": "assignments",
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "grades",
+                    "localField": "_id",
+                    "foreignField": "userId",
+                    "as": "grades",
                 }
             },
             {
