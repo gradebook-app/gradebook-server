@@ -230,8 +230,8 @@ class GradesService:
             }, upsert=True, return_document=ReturnDocument.BEFORE)
         
             if not change == None: 
-                previous_percent = change["grade"]["percentage"]
-                current_percent = course["grade"]["percentage"] 
+                previous_percent = float(change["grade"]["percentage"])
+                current_percent = float(course["grade"]["percentage"])
                 if not previous_percent == current_percent: 
                     q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
 
