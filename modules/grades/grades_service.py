@@ -471,7 +471,7 @@ class GradesService:
         returned_total = len(docs)
    
         for doc in list(docs): 
-            q.enqueue_call(func=self.persist_assignments, args=(doc, persist_time))
+            self.persist_assignments(doc, persist_time)
 
         if returned_total == 0: 
             q.enqueue_call(func=self.save_persist_time, args=(persist_time,))
