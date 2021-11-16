@@ -89,11 +89,8 @@ class GradesService:
         else: 
             return {}
         
-        gpa_unweighted_total = 0
-        gpa_weighted_total = 0
-        excluded_courses = 0
-        course_points = 0
-
+        gpa_unweighted_total, gpa_weighted_total, excluded_courses, course_points = 0
+        
         for course in courses: 
             percentage = course['grade']['percentage']
             percentage = int(float(percentage)) if percentage else percentage
