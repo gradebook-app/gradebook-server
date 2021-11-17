@@ -1,3 +1,4 @@
 /database
 /dump
 .env
+dump.rdb
