@@ -1,3 +1,4 @@
+from typing import Type
 from pymongo.collection import ReturnDocument
 from flask import Response
 from rq import Queue
@@ -164,7 +165,7 @@ class GradesService:
         fcm_service = FCMService()
         notificationToken = user['notificationToken']
 
-        if not notificationToken: return
+        if not notificationToken or previous_percent is None: return
 
         equality = "increased" if current_percent > previous_percent else "decreased"
         name = course["name"]
@@ -229,11 +230,20 @@ class GradesService:
                 }
             }, upsert=True, return_document=ReturnDocument.BEFORE)
         
-            if not change == None: 
-                previous_percent = float(change["grade"]["percentage"])
-                current_percent = float(course["grade"]["percentage"])
-                if not previous_percent == current_percent: 
-                    q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
+            try: 
+                if not change == None: 
+                    previous_percent = current_percent = None 
+
+                    try: previous_percent = float(change["grade"]["percentage"])
+                    except TypeError: pass
+                    try: current_percent = float(course["grade"]["percentage"])
+                    except TypeError: pass
+
+                    assert not current_percent is None
+
+                    if not previous_percent == current_percent: 
+                        q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
+            except AssertionError: pass
 
         self.cleanup_classes(user, grades)
     
