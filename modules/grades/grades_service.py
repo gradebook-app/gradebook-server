@@ -368,7 +368,6 @@ class GradesService:
         return docs
 
     async def persist_assignments(self, user, persist_time):
-        print("requesting...")
         assignments = user['assignments']
         genesis_service = GenesisService()
 
@@ -453,7 +452,10 @@ class GradesService:
         loop.close()
 
         endTime = time.time()
-        print(endTime - startTime)
+        print(
+            f"{skip}-{skip + (limit + skip if limit >= len(docs) else skip + len(docs))}: ", 
+            endTime - startTime
+        )
 
         if returned_total == 0: 
             q.enqueue_call(func=self.save_persist_time, args=(persist_time,))
