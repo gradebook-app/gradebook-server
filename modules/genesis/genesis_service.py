@@ -52,9 +52,11 @@ class GenesisService:
             studentId = None
 
             if access: 
-                login_res, _ = await self.fetch(session, method="GET", url=response.headers['Location'], cookies=cookies)
-                login_url_params = parse_qs(login_res.url_obj.query_string)
-                studentId = login_url_params['studentid'][0]
+                try: 
+                    login_res, _ = await self.fetch(session, method="GET", url=response.headers['Location'], cookies=cookies)
+                    login_url_params = parse_qs(login_res.url_obj.query_string)
+                    studentId = login_url_params['studentid'][0]
+                except Exception: pass
 
             return [ genesisToken, userId, access, studentId ]
     

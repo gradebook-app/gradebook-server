@@ -14,6 +14,7 @@ import time
 from rq_scheduler import Scheduler
 import json
 import asyncio
+from modules.grades.aggregations.user_aggregation import user_aggregation
 
 q = Queue(connection=conn)
 scheduler = Scheduler(queue=q, connection=conn)
@@ -94,7 +95,7 @@ class GradesService:
 
         for course in courses: 
             percentage = course['grade']['percentage']
-            percentage = int(percentage) if percentage else percentage
+            percentage = int(float(percentage)) if percentage else percentage
 
             if (percentage and percentage != 0): 
                 name = course["name"]
@@ -229,8 +230,8 @@ class GradesService:
             }, upsert=True, return_document=ReturnDocument.BEFORE)
         
             if not change == None: 
-                previous_percent = change["grade"]["percentage"]
-                current_percent = course["grade"]["percentage"] 
+                previous_percent = float(change["grade"]["percentage"])
+                current_percent = float(course["grade"]["percentage"])
                 if not previous_percent == current_percent: 
                     q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
 
