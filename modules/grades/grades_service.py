@@ -453,7 +453,7 @@ class GradesService:
 
         endTime = time.time()
         print(
-            f"{skip}-{skip + (limit + skip if limit >= len(docs) else skip + len(docs))}: ", 
+            f"{skip}-{limit + skip if limit >= len(docs) else skip + len(docs)}: ", 
             endTime - startTime
         )
 
