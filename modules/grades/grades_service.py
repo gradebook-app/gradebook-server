@@ -438,6 +438,7 @@ class GradesService:
 
         limit = 15 # find optimal number of users to query at once
         user_modal = db.get_collection("users")
+    
         response = user_modal.aggregate(user_aggregation(limit, skip))
         next_skip = skip + limit
 

@@ -20,9 +20,9 @@ def user_aggregation(limit, skip):
             }
         },
         {
-            "$limit": limit,
+            "$skip": skip,
         },
         {
-            "$skip": skip,
-        }
+            "$limit": limit,
+        },
     ]
