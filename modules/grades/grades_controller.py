@@ -1,6 +1,7 @@
 from flask import Blueprint
 from modules.grades.grades_service import GradesService
 from utils.request_tools import query, genesisId
+import asyncio
 
 grades = Blueprint('grades', __name__)
 grades_service = GradesService()
@@ -15,7 +16,11 @@ def getGrades(query, genesisId):
 @query
 @genesisId
 def getAssignments(query, genesisId): 
-    return grades_service.assignments(query, genesisId)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    response = loop.run_until_complete(grades_service.assignments(query, genesisId))
+    loop.close()
+    return response
 
 @grades.route("/grades/gpa", methods=["GET"])
 @genesisId

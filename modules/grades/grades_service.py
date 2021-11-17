@@ -1,6 +1,7 @@
 from pymongo.collection import ReturnDocument
 from flask import Response
 from rq import Queue
+from modules.grades.aggegations.user import user_aggregation
 from worker import conn
 from mongo_config import db
 from modules.genesis.genesis_service import GenesisService
@@ -12,6 +13,7 @@ from bson import ObjectId, json_util
 import time
 from rq_scheduler import Scheduler
 import json
+import asyncio
 from modules.grades.aggregations.user_aggregation import user_aggregation
 
 q = Queue(connection=conn)
@@ -25,8 +27,8 @@ class GradesService:
         response = self.genesisService.get_grades(query, genesisId)
         return response
     
-    def assignments(self, query, genesisId): 
-        response = self.genesisService.get_assignments(query, genesisId)
+    async def assignments(self, query, genesisId): 
+        response = await self.genesisService.get_assignments(query, genesisId)
         if isinstance(response, Response):
             return response
 
@@ -89,10 +91,7 @@ class GradesService:
         else: 
             return {}
         
-        gpa_unweighted_total = 0
-        gpa_weighted_total = 0
-        excluded_courses = 0
-        course_points = 0
+        gpa_unweighted_total = gpa_weighted_total = excluded_courses = course_points = 0
 
         for course in courses: 
             percentage = course['grade']['percentage']
@@ -238,7 +237,7 @@ class GradesService:
 
         self.cleanup_classes(user, grades)
     
-    def authenticate_user(self, user): 
+    async def authenticate_user(self, user): 
         email = user['email']
         school_district = user['schoolDistrict']
         password = user['pass']
@@ -248,7 +247,7 @@ class GradesService:
         
         dycrypted_password = auth_service.dyscrypt_password(password).decode()
   
-        [ genesisToken, email, access, studentId ] = genesis_service.get_access_token(email, dycrypted_password, school_district)
+        [ genesisToken, email, access, studentId ] = await genesis_service.get_access_token(email, dycrypted_password, school_district)
 
         if not access: return None
     
@@ -368,17 +367,18 @@ class GradesService:
                 
         return docs
 
-    def persist_assignments(self, user, persist_time):
+    async def persist_assignments(self, user, persist_time):
+        print("requesting...")
         assignments = user['assignments']
         genesis_service = GenesisService()
 
-        genesisId = self.authenticate_user(user)
+        genesisId = await self.authenticate_user(user)
         
         if genesisId is None: 
             return 
         
         query = { "markingPeriod": "allMP", "courseId": "", "sectionId": "", "status": "GRADED" }
-        response = genesis_service.get_assignments(query, genesisId)
+        response = await genesis_service.get_assignments(query, genesisId)
         
         serialized_new_assignments = []
         serialized_stored_assignments = []
@@ -437,7 +437,7 @@ class GradesService:
     def query_grades(self, skip): 
         persist_time = time.time()
 
-        limit = 25 # find optimal number of users to query at once
+        limit = 15 # find optimal number of users to query at once
         user_modal = db.get_collection("users")
         response = user_modal.aggregate(user_aggregation(limit, skip))
         next_skip = skip + limit
@@ -445,8 +445,15 @@ class GradesService:
         docs = list(response)
         returned_total = len(docs)
    
-        for doc in list(docs): 
-            q.enqueue_call(func=self.persist_assignments, args=(doc, persist_time))
+        startTime = time.time()
+
+        loop = asyncio.get_event_loop()
+        coros = [ self.persist_assignments(doc, persist_time) for doc in list(docs) ]
+        loop.run_until_complete(asyncio.gather(*coros))
+        loop.close()
+
+        endTime = time.time()
+        print(endTime - startTime)
 
         if returned_total == 0: 
             q.enqueue_call(func=self.save_persist_time, args=(persist_time,))

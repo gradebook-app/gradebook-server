@@ -26,10 +26,10 @@ class AuthService:
         })
         return {}
 
-    def login(self, email, password, school_district, notificationToken): 
+    async def login(self, email, password, school_district, notificationToken): 
         user_modal = db.get_collection("users")
 
-        [ genesisToken, userId, access, studentId ] = self.genesis_service.get_access_token(email, password, school_district)
+        [ genesisToken, userId, access, studentId ] = await self.genesis_service.get_access_token(email, password, school_district)
         user = {} 
 
         if access: 
