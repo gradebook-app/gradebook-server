@@ -235,11 +235,11 @@ class GradesService:
                     previous_percent = current_percent = None 
 
                     try: previous_percent = float(change["grade"]["percentage"])
-                    except TypeError: pass
+                    except TypeError and ValueError: pass
                     try: current_percent = float(course["grade"]["percentage"])
-                    except TypeError: pass
+                    except TypeError and ValueError: pass
 
-                    assert not current_percent is None
+                    assert not current_percent is None and not previous_percent is None
 
                     if not previous_percent == current_percent: 
                         q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
