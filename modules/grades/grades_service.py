@@ -2,7 +2,6 @@ from typing import Type
 from pymongo.collection import ReturnDocument
 from flask import Response
 from rq import Queue
-from modules.grades.aggegations.user import user_aggregation
 from worker import conn
 from mongo_config import db
 from modules.genesis.genesis_service import GenesisService

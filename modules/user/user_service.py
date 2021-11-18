@@ -19,3 +19,6 @@ class UserService:
     
     def get_user_account(self, genesisId): 
         return self.genesisService.account_details(genesisId)
+
+    def get_schedule(self, genesisId): 
+        pass

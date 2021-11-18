@@ -17,3 +17,8 @@ def get_user_account(genesisId):
 def set_notification_token(body, genesisId): 
     token = body["notificationToken"]
     return user_service.set_notification_token(token, genesisId)
+
+@user.route("/user/schedule", methods=['GET'])
+@genesisId
+def get_user_schedule(genesisId): 
+    return user_service.get_schedule(genesisId)
