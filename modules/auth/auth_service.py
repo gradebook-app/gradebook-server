@@ -27,6 +27,7 @@ class AuthService:
         return {}
 
     async def login(self, email, password, school_district, notificationToken): 
+        email = email.trim()
         user_modal = db.get_collection("users")
 
         [ genesisToken, userId, access, studentId ] = await self.genesis_service.get_access_token(email, password, school_district)
