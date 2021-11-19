@@ -1,6 +1,7 @@
 from mongo_config import db
 from bson import ObjectId
 from modules.genesis.genesis_service import GenesisService
+from flask import Response 
 
 class UserService: 
     def __init__(self): 
@@ -21,4 +22,6 @@ class UserService:
         return self.genesisService.account_details(genesisId)
 
     def get_schedule(self, genesisId): 
-        pass
+        response = self.genesisService.query_schedule(genesisId)
+        if isinstance(response, Response): return { "header": "", "courses": [] }
+        return response
