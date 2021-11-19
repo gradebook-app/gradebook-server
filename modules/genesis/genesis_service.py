@@ -300,13 +300,14 @@ class GenesisService:
             "locker": locker,
         }
 
-    def query_schedule(self, genesisId): 
+    def query_schedule(self, genesisId, query): 
         genesis = genesis_config[genesisId['schoolDistrict']]
         root_url = genesis["root"]
         main_route = genesis["main"]
+        date = query['date']
 
         studentId = genesisId['studentId']
-        url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=ajaxGetBellScheduleForDate&studentid={studentId}&scheduleDate=11/18/2021&schedView=daily"
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=ajaxGetBellScheduleForDate&studentid={studentId}&scheduleDate={date}&schedView=daily"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)

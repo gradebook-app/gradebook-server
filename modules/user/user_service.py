@@ -21,7 +21,7 @@ class UserService:
     def get_user_account(self, genesisId): 
         return self.genesisService.account_details(genesisId)
 
-    def get_schedule(self, genesisId): 
-        response = self.genesisService.query_schedule(genesisId)
+    def get_schedule(self, genesisId, query): 
+        response = self.genesisService.query_schedule(genesisId, query)
         if isinstance(response, Response): return { "header": "", "courses": [] }
         return response
