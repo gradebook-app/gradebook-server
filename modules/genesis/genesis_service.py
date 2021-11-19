@@ -322,7 +322,14 @@ class GenesisService:
 
         for course in courses: 
             sections = course.items("div")
-            period, start_time, end_time, name, teacher, room = (el.text() for el in sections)
+
+            period = next(sections).text();
+            start_time = next(sections).text();
+            end_time = next(sections).text();
+            name = next(sections).text();
+            teacher = next(sections).text();
+            room = next(sections).text();
+                
             classes.append({ 
                 "period": period, 
                 "startTime": start_time, 
