@@ -75,7 +75,7 @@ class GenesisService:
         studentId = genesisId['studentId']
      
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={studentId}&mpToView={markingPeriod}"
-  
+    
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
         if not self.access_granted(response.text): return Response(
