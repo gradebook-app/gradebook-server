@@ -1,3 +1,4 @@
+from typing import Type
 from pymongo.collection import ReturnDocument
 from flask import Response
 from rq import Queue
@@ -12,9 +13,8 @@ from bson import ObjectId, json_util
 import time
 from rq_scheduler import Scheduler
 import json
-from constants.genesis import genesis_config
-from requests_futures.sessions import FuturesSession
-from concurrent.futures import as_completed
+import asyncio
+from modules.grades.aggregations.user_aggregation import user_aggregation
 
 q = Queue(connection=conn)
 scheduler = Scheduler(queue=q, connection=conn)
@@ -27,10 +27,8 @@ class GradesService:
         response = self.genesisService.get_grades(query, genesisId)
         return response
     
-    def assignments(self, query, genesisId): 
-        token = genesisId['token']
-        url = self.genesisService.get_assignments_url(query, genesisId)
-        response = self.genesisService.get_assignments(url, token)
+    async def assignments(self, query, genesisId): 
+        response = await self.genesisService.get_assignments(query, genesisId)
         if isinstance(response, Response):
             return response
 
@@ -85,22 +83,50 @@ class GradesService:
         return { "pastGradePointAverages": gpas }
 
     def caculate_gpa(self, response): 
-        courses = response[1]
+        courses_raw = response[1]
         weights = response[2]
 
-        if courses and len(courses) > 0: 
-            courses = np.array(courses).flatten()
+        if courses_raw and len(courses_raw) > 0: 
+            courses = np.array(courses_raw).flatten()
         else: 
             return {}
         
-        gpa_unweighted_total = 0
-        gpa_weighted_total = 0
-        excluded_courses = 0
-        course_points = 0
+        course_tallied = {}
 
-        for course in courses: 
+        single_mp = len(courses_raw) == len(courses)
+
+        if not single_mp: 
+            for course in courses: 
+                sectionId = course['sectionId']
+                courseId = course['courseId']
+                key = f'{courseId}-{sectionId}'
+                try: course_tallied[key].append(course)
+                except KeyError: course_tallied[key] = [ course ]
+
+            course_averages = []
+
+            for course_mps in course_tallied.values(): 
+                course_grade_total = 0
+                course_count = 0
+
+                for course in course_mps: 
+                    try: 
+                        percentage = course['grade']['percentage']
+                        if percentage and percentage > 0: 
+                            course_grade_total += percentage
+                            course_count += 1
+                    except Exception: continue
+                
+                average = course_grade_total / course_count if course_count > 0 else 0
+                course_mps[0]['grade']['percentage'] = average
+                course_averages.append(course_mps[0])
+
+        gpa_unweighted_total = gpa_weighted_total = excluded_courses = course_points = 0
+        course_loop = courses if single_mp else course_averages
+
+        for course in course_loop: 
             percentage = course['grade']['percentage']
-            percentage = float(percentage) if percentage else percentage
+            percentage = int(float(percentage)) if percentage else percentage
 
             if (percentage and percentage != 0): 
                 name = course["name"]
@@ -169,7 +195,7 @@ class GradesService:
         fcm_service = FCMService()
         notificationToken = user['notificationToken']
 
-        if not notificationToken: return
+        if not notificationToken or previous_percent is None: return
 
         equality = "increased" if current_percent > previous_percent else "decreased"
         name = course["name"]
@@ -234,15 +260,24 @@ class GradesService:
                 }
             }, upsert=True, return_document=ReturnDocument.BEFORE)
         
-            if not change == None: 
-                previous_percent = change["grade"]["percentage"]
-                current_percent = course["grade"]["percentage"] 
-                if not previous_percent == current_percent: 
-                    q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
+            try: 
+                if not change == None: 
+                    previous_percent = current_percent = None 
+
+                    try: previous_percent = float(change["grade"]["percentage"])
+                    except TypeError and ValueError: pass
+                    try: current_percent = float(course["grade"]["percentage"])
+                    except TypeError and ValueError: pass
+
+                    assert not current_percent is None and not previous_percent is None
+
+                    if not previous_percent == current_percent: 
+                        q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
+            except AssertionError: pass
 
         self.cleanup_classes(user, grades)
-
-    def get_authentication_request(self, user): 
+    
+    async def authenticate_user(self, user): 
         email = user['email']
         school_district = user['schoolDistrict']
         password = user['pass']
@@ -251,10 +286,21 @@ class GradesService:
         genesis_service = GenesisService()
         
         dycrypted_password = auth_service.dyscrypt_password(password).decode()
-        [ url, data, headers ] = genesis_service.get_access_token_request(email, dycrypted_password, school_district)
-        
-        return [ url, data, headers ]
-   
+  
+        [ genesisToken, email, access, studentId ] = await genesis_service.get_access_token(email, dycrypted_password, school_district)
+
+        if not access: return None
+    
+        genesisId = { 
+            "schoolDistrict": school_district, 
+            "token": genesisToken,
+            "email": email,
+            "studentId": studentId,
+        }
+
+        return genesisId
+
+
     def query_user_grade(self, genesisId): 
         genesis_service = GenesisService()
 
@@ -360,60 +406,18 @@ class GradesService:
                     docs.append(i)
                 
         return docs
-    
-    def get_assignments(self, users, persist_time):
-        auth_session = FuturesSession()
 
-        requests = []
-        for user in users: 
-            [ url, data, headers ] = self.get_authentication_request(user)
-            requests.append(( url, data, headers ))
-
-        futures = [ auth_session.post(url=url, data=data, headers=headers, allow_redirects=False) for url, data, headers, in requests ]
-        auth_responses = [ future.result() for future in as_completed(futures) ]
-        auth_session.close()
-        
-        authenticated_users = []
-
-        for user, auth_response in zip(users, auth_responses): 
-            try: 
-                school_district = user['schoolDistrict']
-                genesis = genesis_config[school_district]
-                auth_route = genesis['auth']
-                headers = auth_response.headers
-                access = False
-                if not headers['Location'].endswith(auth_route):
-                    access = True
-                if access: 
-                    genesisId = { 
-                        "schoolDistrict": school_district, 
-                        "token": dict(auth_response.cookies)['JSESSIONID'],
-                        "email": user['email'],
-                        "studentId": user['studentId'],
-                    }
-                    authenticated_users.append((user, genesisId))
-            except KeyError: pass
-        
-        assignment_session = FuturesSession()
-
-        genesis_service = GenesisService()
-        requests = []
-        for user, genesisId in authenticated_users: 
-            query = { "markingPeriod": "allMP", "courseId": "", "sectionId": "", "status": "GRADED".upper() }
-            requests.append((genesis_service.get_assignments_url(query, genesisId), genesisId['token']))
-        
-        assignment_tasks = [ assignment_session.get(url=url, cookies={'JSESSIONID': token }) for url, token in requests ]
-        assignment_responses = [ future.result() for future in as_completed(assignment_tasks) ]
-        assignment_session.close()
-
-        for authenticated_user, response in zip(authenticated_users, assignment_responses):
-            user, genesisId = authenticated_user
-            q.enqueue_call(self.persist_assignments, args=(user, genesisId, response, persist_time))
-
-    def persist_assignments(self, user, genesisId, response, persist_time):
+    async def persist_assignments(self, user, persist_time):
         assignments = user['assignments']
         genesis_service = GenesisService()
-        response = genesis_service.parse_assignments(response)
+
+        genesisId = await self.authenticate_user(user)
+        
+        if genesisId is None: 
+            return 
+        
+        query = { "markingPeriod": "allMP", "courseId": "", "sectionId": "", "status": "GRADED" }
+        response = await genesis_service.get_assignments(query, genesisId)
         
         serialized_new_assignments = []
         serialized_stored_assignments = []
@@ -466,49 +470,33 @@ class GradesService:
         else: 
             send_notification = False
             q.enqueue_call(func=self.store_assignments, args=(user, response, send_notification))
-        
         if not len(assignments) and not len(user['grades']):
             q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
     def query_grades(self, skip): 
         persist_time = time.time()
 
-        limit = 20
+        limit = 15 # find optimal number of users to query at once
         user_modal = db.get_collection("users")
-        response = user_modal.aggregate([
-            {
-                "$match": { "status": "active" }
-            },
-            {
-                "$lookup": {
-                    "from": "assignments",
-                    "localField": "_id",
-                    "foreignField": "userId",
-                    "as": "assignments",
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "grades",
-                    "localField": "_id",
-                    "foreignField": "userId",
-                    "as": "grades",
-                }
-            },
-            {
-                "$limit": limit,
-            },
-            {
-                "$skip": skip,
-            }
-        ])
+    
+        response = user_modal.aggregate(user_aggregation(limit, skip))
         next_skip = skip + limit
 
         docs = list(response)
         returned_total = len(docs)
    
-        if returned_total: 
-            q.enqueue_call(func=self.get_assignments, args=(list(docs), persist_time,))
+        startTime = time.time()
+
+        loop = asyncio.get_event_loop()
+        coros = [ self.persist_assignments(doc, persist_time) for doc in list(docs) ]
+        loop.run_until_complete(asyncio.gather(*coros))
+        loop.close()
+
+        endTime = time.time()
+        print(
+            f"{skip}-{limit + skip if limit >= len(docs) else skip + len(docs)}: ", 
+            endTime - startTime
+        )
 
         if returned_total == 0: 
             q.enqueue_call(func=self.save_persist_time, args=(persist_time,))

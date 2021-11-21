@@ -5,12 +5,23 @@ from constants.genesis import genesis_config
 from utils.grade import grade
 from urllib.parse import urlparse, parse_qs
 from flask import Response
+import asyncio
+import aiohttp
+from http.cookies import SimpleCookie
 
 class GenesisService: 
     def __init__(self): 
         pass
 
-    def get_access_token_request(self, userId, password, school_district): 
+    async def fetch(self, session, method="GET", *args, **kwargs): 
+        if method == "GET":
+            async with session.get(*args, **kwargs) as response:
+                return response, await response.text()
+        elif method == "POST": 
+            async with session.post(*args, **kwargs) as response:
+                return response
+
+    async def get_access_token(self, userId, password, school_district): 
         genesis = genesis_config[school_district]
         email = f'{userId}'
 
@@ -20,31 +31,37 @@ class GenesisService:
 
         data = {'j_username': email, 'j_password': password }
         headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-        return [ url, data, headers ]
 
-    def get_access_token(self, userId, url, data, headers, school_district): 
-        genesis = genesis_config[school_district]
-        auth_route = genesis['auth']
-        response = requests.post(url, data=data, headers=headers, allow_redirects=False)
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
+            response = await self.fetch(session, method="POST", url=url,data=data, headers=headers, allow_redirects=False)
 
-        access = False
-        if not response.headers['Location'].endswith(auth_route):
-            access = True
+            access = False
+            if not response.headers['Location'].endswith(auth_route):
+                access = True
 
-        cookies = dict(response.cookies)
-        genesisToken = cookies['JSESSIONID']
+            cookie_str = response.cookies
+            cookie = SimpleCookie()
+            cookie.load(cookie_str)
+        
+            cookies = {}
+            for key, morsel in cookie.items():
+                cookies[key] = morsel.value
 
-        studentId = None
+            genesisToken = cookies['JSESSIONID']
 
-        if access: 
-            login_res = requests.get(response.headers['Location'], cookies=cookies )
-            login_url_params = parse_qs(urlparse(login_res.url).query)
-            studentId = login_url_params['studentid'][0]
+            studentId = None
 
-        return [ genesisToken, userId, access, studentId ]
+            if access: 
+                try: 
+                    login_res, _ = await self.fetch(session, method="GET", url=response.headers['Location'], cookies=cookies)
+                    login_url_params = parse_qs(login_res.url_obj.query_string)
+                    studentId = login_url_params['studentid'][0]
+                except Exception: pass
+
+            return [ genesisToken, userId, access, studentId ]
     
-    def access_granted(self, response): 
-        title = pq(response.text).find("title").text()
+    def access_granted(self, html): 
+        title = pq(html).find("title").text()
         if "login" in title.lower(): 
             return False
         else: return True
@@ -61,7 +78,7 @@ class GenesisService:
   
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
-        if not self.access_granted(response): return Response(
+        if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
         )
@@ -129,54 +146,8 @@ class GenesisService:
             "currentMarkingPeriod": current_marking_period,
         }
         return response
-
-    def parse_assignments(self, response):
-        html = response.text
-        parser = pq(html)
-        table = parser.find('table.list')
-        assignments = table.children('tr:not([class="listheading"])')
-
-        data = []
-
-        for assignment in assignments: 
-            columns = pq(assignment).children('td')
-            marking_period = pq(columns[0]).text()
-            date = pq(columns[1]).text()
-            [ courseElement, teacherElement ] = pq(columns[2]).items("div")
-            course = courseElement.text()
-            teacher = teacherElement.text()
-            category = pq(columns[3]).remove('div').text()
-            name = pq(columns[4]).remove('div').text()
-
-            gradeDivs = pq(columns[5]).children('div')
-            percentage = None
-
-            if gradeDivs.length: 
-                try: 
-                    percentage = float(pq(gradeDivs[-1]).remove('div').text()[:-1])
-                except ValueError: 
-                    percentage = None
-
-            points = pq(columns[5]).remove('div').text()
-            comment = pq(columns[6]).text()
-            comment = comment.replace('"', '') if comment else ""
-
-            data.append({
-                "markingPeriod": marking_period,
-                "date": date,
-                "comment": comment,
-                "course": course,
-                "teacher": teacher,
-                "category": category,
-                "name": name,
-                "grade": {
-                    "points": points,
-                    "percentage": percentage,
-                }
-            })
-        return data
-
-    def get_assignments_url(self, query, genesisId):
+    
+    async def get_assignments(self, query, genesisId): 
         genesis = genesis_config[genesisId['schoolDistrict']]
         root_url = genesis["root"]
         main_route = genesis["main"]
@@ -195,17 +166,58 @@ class GenesisService:
             status = ""
 
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={course_and_section}&status={status}"
-        return url
+        cookies = { 'JSESSIONID': genesisId['token'] }
 
-    def get_assignments(self, url, token): 
-        cookies = { 'JSESSIONID': token }
-        response = requests.get(url, cookies=cookies)
-        if not self.access_granted(response): return Response(
-            "Session Expired",
-            401,
-        )
-        data = self.parse_assignments(response)
-        return data
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
+            _, text = await self.fetch(session, method="GET", url=url, cookies=cookies) 
+   
+            if not self.access_granted(text): return Response(
+                "Session Expired",
+                401,
+            )
+            parser = pq(text)
+            table = parser.find('table.list')
+            assignments = table.children('tr:not([class="listheading"])')
+
+            data = []
+
+            for assignment in assignments: 
+                columns = pq(assignment).children('td')
+                marking_period = pq(columns[0]).text()
+                date = pq(columns[1]).text()
+                [ courseElement, teacherElement ] = pq(columns[2]).items("div")
+                course = courseElement.text()
+                teacher = teacherElement.text()
+                category = pq(columns[3]).remove('div').text()
+                name = pq(columns[4]).remove('div').text()
+
+                gradeDivs = pq(columns[5]).children('div')
+                percentage = None
+
+                if gradeDivs.length: 
+                    try: 
+                        percentage = float(pq(gradeDivs[-1]).remove('div').text()[:-1])
+                    except ValueError: 
+                        percentage = None
+
+                points = pq(columns[5]).remove('div').text()
+                comment = pq(columns[6]).text()
+                comment = comment.replace('"', '') if comment else ""
+
+                data.append({
+                    "markingPeriod": marking_period,
+                    "date": date,
+                    "comment": comment,
+                    "course": course,
+                    "teacher": teacher,
+                    "category": category,
+                    "name": name,
+                    "grade": {
+                        "points": points,
+                        "percentage": percentage,
+                    }
+                })
+            return data
     
     def course_weights(self, genesisId): 
         genesis = genesis_config[genesisId['schoolDistrict']]
@@ -217,7 +229,7 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
-        if not self.access_granted(response): return Response(
+        if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
         )
@@ -254,7 +266,7 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
-        if not self.access_granted(response): return Response(
+        if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
         )
@@ -288,6 +300,48 @@ class GenesisService:
             "locker": locker,
         }
 
+    def query_schedule(self, genesisId, query): 
+        genesis = genesis_config[genesisId['schoolDistrict']]
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+        date = query['date']
+
+        studentId = genesisId['studentId']
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=ajaxGetBellScheduleForDate&studentid={studentId}&scheduleDate={date}&schedView=daily"
+        cookies = { 'JSESSIONID': genesisId['token'] }
+
+        response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response.text): return Response(
+            "Session Expired",
+            401,
+        )
+
+        html = pq(response.json())
+        header = html.find("tr.listheading").text()
+        courses = html.items('tr:not([class="listheading"])')
+        classes = []
+
+        for course in courses: 
+            sections = course.items("div")
+
+            period = next(sections).text();
+            start_time = next(sections).text();
+            end_time = next(sections).text();
+            name = next(sections).text();
+            teacher = next(sections).text();
+            room = next(sections).text();
+                
+            classes.append({ 
+                "period": period, 
+                "startTime": start_time, 
+                "endTime": end_time, 
+                "name": name,
+                "teacher": teacher,
+                "room": room,
+            })
+        
+        return { "courses": classes, "header": header }
+
     def query_past_grades(self, genesisId): 
         genesis = genesis_config[genesisId['schoolDistrict']]
         root_url = genesis["root"]
@@ -298,7 +352,7 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         response = requests.get(url, cookies=cookies)
-        if not self.access_granted(response): return Response(
+        if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
         )
