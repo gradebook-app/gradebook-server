@@ -91,9 +91,36 @@ class GradesService:
         else: 
             return {}
         
-        gpa_unweighted_total = gpa_weighted_total = excluded_courses = course_points = 0
+        course_tallied = {}
 
         for course in courses: 
+            sectionId = course['sectionId']
+            courseId = course['courseId']
+            key = f'{courseId}-{sectionId}'
+            try: course_tallied[key].append(course)
+            except KeyError: course_tallied[key] = [ course ]
+
+        course_averages = []
+
+        for course_mps in course_tallied.values(): 
+            course_grade_total = 0
+            course_count = 0
+
+            for course in course_mps: 
+                try: 
+                    percentage = course['grade']['percentage']
+                    if percentage and percentage > 0: 
+                        course_grade_total += percentage
+                        course_count += 1
+                except Exception: continue
+            
+            average = course_grade_total / course_count if course_count > 0 else 0
+            course_mps[0]['grade']['percentage'] = average
+            course_averages.append(course_mps[0])
+
+        gpa_unweighted_total = gpa_weighted_total = excluded_courses = course_points = 0
+
+        for course in course_averages: 
             percentage = course['grade']['percentage']
             percentage = int(float(percentage)) if percentage else percentage
 
