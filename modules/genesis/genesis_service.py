@@ -300,6 +300,48 @@ class GenesisService:
             "locker": locker,
         }
 
+    def query_schedule(self, genesisId, query): 
+        genesis = genesis_config[genesisId['schoolDistrict']]
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+        date = query['date']
+
+        studentId = genesisId['studentId']
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=ajaxGetBellScheduleForDate&studentid={studentId}&scheduleDate={date}&schedView=daily"
+        cookies = { 'JSESSIONID': genesisId['token'] }
+
+        response = requests.get(url, cookies=cookies)
+        if not self.access_granted(response.text): return Response(
+            "Session Expired",
+            401,
+        )
+
+        html = pq(response.json())
+        header = html.find("tr.listheading").text()
+        courses = html.items('tr:not([class="listheading"])')
+        classes = []
+
+        for course in courses: 
+            sections = course.items("div")
+
+            period = next(sections).text();
+            start_time = next(sections).text();
+            end_time = next(sections).text();
+            name = next(sections).text();
+            teacher = next(sections).text();
+            room = next(sections).text();
+                
+            classes.append({ 
+                "period": period, 
+                "startTime": start_time, 
+                "endTime": end_time, 
+                "name": name,
+                "teacher": teacher,
+                "room": room,
+            })
+        
+        return { "courses": classes, "header": header }
+
     def query_past_grades(self, genesisId): 
         genesis = genesis_config[genesisId['schoolDistrict']]
         root_url = genesis["root"]

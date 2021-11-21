@@ -1,6 +1,6 @@
 from flask import Blueprint
 from modules.grades.grades_service import GradesService
-from utils.request_tools import query, genesisId
+from utils.request_tools import body, query, genesisId
 import asyncio
 
 grades = Blueprint('grades', __name__)
@@ -31,3 +31,8 @@ def getGPA(genesisId):
 @genesisId
 def getPastGPA(genesisId): 
     return grades_service.query_past_grades(genesisId)
+
+@grades.route("/grades/widgetGrades")
+@body
+def getWidgetGrades(body): 
+    return { "grades": "93%" }
