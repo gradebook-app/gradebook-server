@@ -218,7 +218,9 @@ class GradesService:
         if not notificationToken: return
 
         message = f"Unweighted GPA went from {unweighted_user} to {current_unweighted} and weighted GPA went from {weighted_user} to {current_weighted}."
-        fcm_service.send_message(token=notificationToken, message=message, title=f'GPA Update')
+        
+        try: fcm_service.send_message(token=notificationToken, message=message, title=f'GPA Update')
+        except Exception: pass
 
         gpa_modal = db.get_collection("gpa-history")
         gpa_modal.insert_one({
@@ -307,7 +309,7 @@ class GradesService:
         query = { "markingPeriod": "" }
         
         grades = genesis_service.get_grades(query, genesisId)
-
+ 
         if isinstance(grades, Response):
             return grades
 
@@ -334,20 +336,20 @@ class GradesService:
 
     def query_and_save_grades(self, genesisId, user):
         response = self.query_user_grade(genesisId)
-  
+
         if response is None: 
             return
+
+        all_mp_grades = response[0]
+        
+        for mp_grades in all_mp_grades:
+            self.save_grades(user, mp_grades)
 
         gpa = self.caculate_gpa(response)
         unweighted = user["unweightedGPA"]
 
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
             q.enqueue(f=self.send_gpa_update, args=(user, gpa))
-        
-        all_mp_grades = response[0]
-
-        for mp_grades in all_mp_grades:
-            self.save_grades(user, mp_grades)
 
     def save_persist_time(self, persist_time): 
         user_modal = db.get_collection("users")
