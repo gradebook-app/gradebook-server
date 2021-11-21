@@ -83,44 +83,48 @@ class GradesService:
         return { "pastGradePointAverages": gpas }
 
     def caculate_gpa(self, response): 
-        courses = response[1]
+        courses_raw = response[1]
         weights = response[2]
 
-        if courses and len(courses) > 0: 
-            courses = np.array(courses).flatten()
+        if courses_raw and len(courses_raw) > 0: 
+            courses = np.array(courses_raw).flatten()
         else: 
             return {}
         
         course_tallied = {}
 
-        for course in courses: 
-            sectionId = course['sectionId']
-            courseId = course['courseId']
-            key = f'{courseId}-{sectionId}'
-            try: course_tallied[key].append(course)
-            except KeyError: course_tallied[key] = [ course ]
+        single_mp = len(courses_raw) == len(courses)
 
-        course_averages = []
+        if not single_mp: 
+            for course in courses: 
+                sectionId = course['sectionId']
+                courseId = course['courseId']
+                key = f'{courseId}-{sectionId}'
+                try: course_tallied[key].append(course)
+                except KeyError: course_tallied[key] = [ course ]
 
-        for course_mps in course_tallied.values(): 
-            course_grade_total = 0
-            course_count = 0
+            course_averages = []
 
-            for course in course_mps: 
-                try: 
-                    percentage = course['grade']['percentage']
-                    if percentage and percentage > 0: 
-                        course_grade_total += percentage
-                        course_count += 1
-                except Exception: continue
-            
-            average = course_grade_total / course_count if course_count > 0 else 0
-            course_mps[0]['grade']['percentage'] = average
-            course_averages.append(course_mps[0])
+            for course_mps in course_tallied.values(): 
+                course_grade_total = 0
+                course_count = 0
+
+                for course in course_mps: 
+                    try: 
+                        percentage = course['grade']['percentage']
+                        if percentage and percentage > 0: 
+                            course_grade_total += percentage
+                            course_count += 1
+                    except Exception: continue
+                
+                average = course_grade_total / course_count if course_count > 0 else 0
+                course_mps[0]['grade']['percentage'] = average
+                course_averages.append(course_mps[0])
 
         gpa_unweighted_total = gpa_weighted_total = excluded_courses = course_points = 0
+        course_loop = courses if single_mp else course_averages
 
-        for course in course_averages: 
+        for course in course_loop: 
             percentage = course['grade']['percentage']
             percentage = int(float(percentage)) if percentage else percentage
 
