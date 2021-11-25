@@ -1,2 +1,2 @@
 scheduler: rqscheduler --url $REDISTOGO_URL
-worker: python worker.py
+worker: python worker.py --with-scheduler
