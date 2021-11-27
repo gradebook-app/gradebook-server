@@ -1,4 +1,4 @@
-from typing import Type
+from datetime import timedelta, datetime
 from pymongo.collection import ReturnDocument
 from flask import Response
 from rq import Queue
@@ -356,6 +356,8 @@ class GradesService:
         user_modal.update_many({ "status": "active" }, { "$set": {
             "lastPersistTimestamp": persist_time,
         }})
+
+        scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
 
     def clean_assignments(self, userId, assignments): 
         assignment_model = db.get_collection("assignments")

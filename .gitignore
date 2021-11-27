@@ -2,3 +2,5 @@
 /dump
 .env
 dump.rdb
+__pycache__/
+*.pyc
