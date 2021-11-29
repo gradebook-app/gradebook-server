@@ -1,16 +1,13 @@
-FROM ubuntu:16.04
+# syntax=docker/dockerfile:1
 
-RUN apt-get update -y && \
-    apt-get install -y python-pip python-dev
-
-COPY ./requirements.txt /app/requirements.txt
+FROM python:3.10
 
 WORKDIR /app
 
+COPY requirements.txt requirements.txt
+
 RUN pip install -r requirements.txt
 
-COPY . /app
+COPY . .
 
-ENTRYPOINT [ "python" ]
-
-CMD [ "gunicorn app:app" ]
+CMD [ "gunicorn", "app:app" ]
