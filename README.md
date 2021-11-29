@@ -12,6 +12,9 @@ Run These Commands to start server locally
 4. rq worker
 5. python app.py
 
+# Run MongoDB Service: 
+
+1. docker-compose up
 
 # Scale Worker Count on Heroku
 

@@ -352,12 +352,14 @@ class GradesService:
             q.enqueue(f=self.send_gpa_update, args=(user, gpa))
 
     def save_persist_time(self, persist_time): 
-        user_modal = db.get_collection("users")
-        user_modal.update_many({ "status": "active" }, { "$set": {
-            "lastPersistTimestamp": persist_time,
-        }})
-
-        scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
+        try: 
+            user_modal = db.get_collection("users")
+            user_modal.update_many({ "status": "active" }, { "$set": {
+                "lastPersistTimestamp": persist_time,
+            }})
+        except Exception: pass
+        finally: 
+            scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
 
     def clean_assignments(self, userId, assignments): 
         assignment_model = db.get_collection("assignments")
@@ -478,33 +480,37 @@ class GradesService:
             q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
     def query_grades(self, skip): 
-        persist_time = time.time()
+        returned_total = None
 
-        limit = 15 # find optimal number of users to query at once
-        user_modal = db.get_collection("users")
+        try: 
+            persist_time = time.time()
+
+            limit = 15 # find optimal number of users to query at once
+            user_modal = db.get_collection("users")
+        
+            response = user_modal.aggregate(user_aggregation(limit, skip))
+            next_skip = skip + limit
+
+            docs = list(response)
+            returned_total = len(docs)
     
-        response = user_modal.aggregate(user_aggregation(limit, skip))
-        next_skip = skip + limit
+            startTime = time.time()
 
-        docs = list(response)
-        returned_total = len(docs)
-   
-        startTime = time.time()
+            loop = asyncio.get_event_loop()
+            coros = [ self.persist_assignments(doc, persist_time) for doc in list(docs) ]
+            loop.run_until_complete(asyncio.gather(*coros))
+            loop.close()
 
-        loop = asyncio.get_event_loop()
-        coros = [ self.persist_assignments(doc, persist_time) for doc in list(docs) ]
-        loop.run_until_complete(asyncio.gather(*coros))
-        loop.close()
+            endTime = time.time()
+            print(
+                f"{skip}-{limit + skip if limit >= len(docs) else skip + len(docs)}: ", 
+                endTime - startTime
+            )
+        except Exception: pass
+        finally: 
+            if returned_total == 0 or returned_total is None: 
+                q.enqueue_call(func=self.save_persist_time, args=(persist_time,))
+                next_skip = 0
 
-        endTime = time.time()
-        print(
-            f"{skip}-{limit + skip if limit >= len(docs) else skip + len(docs)}: ", 
-            endTime - startTime
-        )
-
-        if returned_total == 0: 
-            q.enqueue_call(func=self.save_persist_time, args=(persist_time,))
-            next_skip = 0
-
-        if next_skip != 0: 
-            q.enqueue_call(func=self.query_grades, args=(next_skip,))
+            if next_skip != 0: 
+                q.enqueue_call(func=self.query_grades, args=(next_skip,))
