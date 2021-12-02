@@ -1,11 +1,5 @@
-from rq import Queue
-from worker import conn
-from rq_scheduler import Scheduler
+from worker import queue as q, scheduler
 from modules.grades.grades_service import GradesService
-
-q = Queue(connection=conn)
-scheduler = Scheduler(queue=q, connection=conn)
-
 
 def clear_queue():
     for job in scheduler.get_jobs(): 

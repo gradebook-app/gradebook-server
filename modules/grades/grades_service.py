@@ -1,8 +1,7 @@
-from datetime import timedelta, datetime
+from datetime import timedelta
 from pymongo.collection import ReturnDocument
 from flask import Response
-from rq import Queue
-from worker import conn
+from worker import queue as q, scheduler
 from mongo_config import db
 from modules.genesis.genesis_service import GenesisService
 from modules.auth.auth_service import AuthService
@@ -11,13 +10,9 @@ from utils.gpa_points import gpa_ap_points, gpa_honors_points, gpa_standard_poin
 from modules.firebase.fcm_service import FCMService
 from bson import ObjectId, json_util
 import time
-from rq_scheduler import Scheduler
 import json
 import asyncio
 from modules.grades.aggregations.user_aggregation import user_aggregation
-
-q = Queue(connection=conn)
-scheduler = Scheduler(queue=q, connection=conn)
 
 class GradesService: 
     def __init__(self): 
