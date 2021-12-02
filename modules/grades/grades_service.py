@@ -1,8 +1,7 @@
 from datetime import timedelta
-from pymongo.collection import ReturnDocument
 from flask import Response
 from worker import queue as q, scheduler
-from mongo_config import db
+from mongo_config import connect_db
 from modules.genesis.genesis_service import GenesisService
 from modules.auth.auth_service import AuthService
 import numpy as np
@@ -12,7 +11,11 @@ from bson import ObjectId, json_util
 import time
 import json
 import asyncio
-from modules.grades.aggregations.user_aggregation import user_aggregation
+from modules.user.user_repository import UserRepository
+from modules.grades.assignments_repository import AssignmentRepository 
+from modules.grades.grades_repository import GradesRepository 
+from modules.grades.gpa_history_repository import GPAHistoryRepository
+
 
 class GradesService: 
     def __init__(self): 
@@ -30,9 +33,9 @@ class GradesService:
         return { "assignments": response }
     
     def save_gpa(self, user, unweighted=None, weighted=None, past=None): 
-        user_modal = db.get_collection("users")
+        user_repo = UserRepository(db=connect_db())
 
-        user_modal.update({
+        user_repo.update_one({
             "_id": ObjectId(user["_id"])
         }, {
             "$set": {
@@ -155,11 +158,11 @@ class GradesService:
         }
 
     def cleanup_classes(self, user, grades): 
-        grade_modal = db.get_collection("grades")
+        grade_repo = GradesRepository(db=connect_db())
         mp = grades['currentMarkingPeriod']
         courses = grades['courses']
 
-        courses_stored = grade_modal.find({
+        courses_stored = grade_repo.find_one({
             "userId": user["_id"],
             "markingPeriod": mp,
         })
@@ -171,7 +174,7 @@ class GradesService:
                     course_exist = True
             if not course_exist: 
                 # legacy course deleted
-                grade_modal.delete_one({ 
+                grade_repo.delete_one({ 
                     "userId": user["_id"],
                     "markingPeriod": mp,
                     "sectionId": course_stored["sectionId"],
@@ -217,16 +220,16 @@ class GradesService:
         try: fcm_service.send_message(token=notificationToken, message=message, title=f'GPA Update')
         except Exception: pass
 
-        gpa_modal = db.get_collection("gpa-history")
-        gpa_modal.insert_one({
+        gpa_repo = GPAHistoryRepository(db=connect_db())
+        gpa_repo.insert_one({
             "userId": ObjectId(user["_id"]),
             "unweightedGPA": user["unweightedGPA"],
             "weightedGPA": user["weightedGPA"],
             "timestamp": time.time()
         })
 
-        user_modal = db.get_collection("users")
-        user_modal.update_one({
+        user_repo = UserRepository(db=connect_db())
+        user_repo.update_one({
             "_id": ObjectId(user["_id"]),
         }, {
             "$set": {
@@ -236,26 +239,14 @@ class GradesService:
         })
 
     def save_grades(self, user, grades):
-        grade_modal = db.get_collection("grades")
+        grade_repo = GradesRepository(db=connect_db())
         mp = grades['currentMarkingPeriod']
 
         courses = grades['courses']
         
         for course in courses: 
-            change = grade_modal.find_one_and_update({
-                "userId": user["_id"],
-                "markingPeriod": mp,
-                "courseId": course["courseId"],
-                "sectionId": course["sectionId"],
-            }, {
-                "$set": {
-                    "name": course["name"],
-                    "grade": {
-                        "percentage": course["grade"]["percentage"],
-                    },
-                    "teacher": course["teacher"]
-                }
-            }, upsert=True, return_document=ReturnDocument.BEFORE)
+            change = grade_repo.find_one_and_update(
+                userId=user["_id"], mp=mp, course=course)
         
             try: 
                 if not change == None: 
@@ -346,31 +337,35 @@ class GradesService:
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
             q.enqueue(f=self.send_gpa_update, args=(user, gpa))
 
-    def save_persist_time(self, persist_time): 
+    def save_persist_time(self, persist_time):
+        user_repository = UserRepository(db=connect_db())
+
         try: 
-            user_modal = db.get_collection("users")
-            user_modal.update_many({ "status": "active" }, { "$set": {
-                "lastPersistTimestamp": persist_time,
-            }})
+            user_repository.update_many(
+                { "status": "active" }, 
+                { "$set": {
+                    "lastPersistTimestamp": persist_time,
+                }}
+            )
         except Exception: pass
         finally: 
-            scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
+            scheduler.enqueue_in(time_delta=timedelta(minutes=1), func=self.query_grades, skip=0)
 
     def clean_assignments(self, userId, assignments): 
-        assignment_model = db.get_collection("assignments")
+        assignment_repository = AssignmentRepository(db=connect_db())
 
         ids = []
 
         for i in assignments: 
             ids.append(ObjectId(i['_id']))
 
-        assignment_model.delete_many({
+        assignment_repository.delete_many({
             "userId": userId,
             "_id": { "$in": ids },
         })
     
     def store_assignments(self, user, assignments, send_notifications):
-        assignment_model = db.get_collection("assignments")
+        assignment_repository = AssignmentRepository(db=connect_db())
         
         docs = []
 
@@ -389,7 +384,7 @@ class GradesService:
             })
 
         try: 
-            assignment_model.insert_many(docs)
+            assignment_repository.insert_many(docs)
 
             token = user['notificationToken']
             if not token or token is None or not send_notifications: return 
@@ -475,22 +470,22 @@ class GradesService:
             q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
     def query_grades(self, skip): 
+        user_repository = UserRepository(db=connect_db())
         returned_total = None
 
         try: 
             persist_time = time.time()
 
             limit = 15 # find optimal number of users to query at once
-            user_modal = db.get_collection("users")
         
-            response = user_modal.aggregate(user_aggregation(limit, skip))
+            response = user_repository.query_aggregated_users(limit=limit, skip=skip)
             next_skip = skip + limit
 
             docs = list(response)
             returned_total = len(docs)
     
             startTime = time.time()
-
+            print()
             loop = asyncio.get_event_loop()
             coros = [ self.persist_assignments(doc, persist_time) for doc in list(docs) ]
             loop.run_until_complete(asyncio.gather(*coros))
@@ -504,7 +499,7 @@ class GradesService:
         except Exception: pass
         finally: 
             if returned_total == 0 or returned_total is None: 
-                q.enqueue_call(func=self.save_persist_time, args=(persist_time,))
+                q.enqueue_call(func=self.save_persist_time, args=(persist_time, ))
                 next_skip = 0
 
             if next_skip != 0: 

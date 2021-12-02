@@ -12,7 +12,7 @@ def query_grades():
 def enqueue_processes(): 
     scheduler.cron(
         repeat=False,
-        cron_string="*/5 * * * *",
+        cron_string="*/1 * * * *",
         func=query_grades,
         id="query grades",
         args=(),
