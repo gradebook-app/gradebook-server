@@ -349,7 +349,7 @@ class GradesService:
             )
         except Exception: pass
         finally: 
-            scheduler.enqueue_in(time_delta=timedelta(minutes=1), func=self.query_grades, skip=0)
+            scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
 
     def clean_assignments(self, userId, assignments): 
         assignment_repository = AssignmentRepository(db=connect_db())
