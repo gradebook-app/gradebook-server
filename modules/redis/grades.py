@@ -1,17 +1,20 @@
-from worker import queue as q, scheduler
+from worker import conn, scheduler
+from rq import Queue
 from modules.grades.grades_service import GradesService
+
+default_queue = Queue('default', connection=conn)
 
 def clear_queue():
     for job in scheduler.get_jobs(): 
         scheduler.cancel(job)
 
 def query_grades(): 
-    jobs = q.get_jobs()
+    jobs = default_queue.get_jobs()
     if len(jobs):
-        print("Skipping Persisting, Queue Busy") 
+        print("Skipping Persisting, Queue Busy", print(jobs)) 
         return 
     grades_service = GradesService()
-    q.enqueue_call(func=grades_service.query_grades, args=(0, ))
+    default_queue.enqueue_call(func=grades_service.query_grades, args=(0, ))
 
 def enqueue_processes(): 
     scheduler.cron(

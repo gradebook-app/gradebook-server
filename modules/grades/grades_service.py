@@ -1,6 +1,5 @@
-from datetime import timedelta
 from flask import Response
-from worker import queue as q, scheduler
+from worker import conn
 from mongo_config import connect_db
 from modules.genesis.genesis_service import GenesisService
 from modules.auth.auth_service import AuthService
@@ -15,7 +14,10 @@ from modules.user.user_repository import UserRepository
 from modules.grades.assignments_repository import AssignmentRepository 
 from modules.grades.grades_repository import GradesRepository 
 from modules.grades.gpa_history_repository import GPAHistoryRepository
+from rq import Queue
 
+low_queue = Queue('low', connection=conn)
+default_queue = Queue('default', connection=conn)
 
 class GradesService: 
     def __init__(self): 
@@ -56,7 +58,7 @@ class GradesService:
         user = { "_id": genesisId["userId"] }
         unweighted = gpa["unweightedGPA"]
         weighted = gpa["weightedGPA"]
-        q.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
+        low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
 
         return gpa
 
@@ -260,7 +262,7 @@ class GradesService:
                     assert not current_percent is None and not previous_percent is None
 
                     if not previous_percent == current_percent: 
-                        q.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
+                        default_queue.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
             except AssertionError: pass
 
         self.cleanup_classes(user, grades)
@@ -335,7 +337,7 @@ class GradesService:
         unweighted = user["unweightedGPA"]
 
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
-            q.enqueue(f=self.send_gpa_update, args=(user, gpa))
+            default_queue.enqueue(f=self.send_gpa_update, args=(user, gpa))
 
     def save_persist_time(self, persist_time):
         user_repository = UserRepository(db=connect_db())
@@ -390,7 +392,7 @@ class GradesService:
             token = user['notificationToken']
             if not token or token is None or not send_notifications: return 
             for assignment_notificatinon in docs[:3]:
-                q.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon))
+                default_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon))
         except Exception: 
             pass
 
@@ -456,19 +458,19 @@ class GradesService:
             removed_assignments = set(serialized_stored_assignments) - set(serialized_new_assignments)
             if len(new_assignments):
                 new_assignments = self.find_assignments(response, list(new_assignments))
-                q.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification))
-                q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+                default_queue.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification))
+                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
             elif not len(new_assignments) and not len(user['grades']):
-                q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
             if len(removed_assignments): 
                 removed_assignments = self.find_assignments(assignments, list(removed_assignments))
-                q.enqueue_call(func=self.clean_assignments, args=(user['_id'], removed_assignments, ))
+                default_queue.enqueue_call(func=self.clean_assignments, args=(user['_id'], removed_assignments, ))
         else: 
             send_notification = False
-            q.enqueue_call(func=self.store_assignments, args=(user, response, send_notification))
+            default_queue.enqueue_call(func=self.store_assignments, args=(user, response, send_notification))
         if not len(assignments) and not len(user['grades']):
-            q.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+            default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
     def query_grades(self, skip): 
         user_repository = UserRepository(db=connect_db())
@@ -499,8 +501,8 @@ class GradesService:
         except Exception: pass
         finally: 
             if returned_total == 0 or returned_total is None: 
-                q.enqueue_call(func=self.save_persist_time, args=(persist_time, ))
+                default_queue.enqueue_call(func=self.save_persist_time, args=(persist_time, ))
                 next_skip = 0
 
             if next_skip != 0: 
-                q.enqueue_call(func=self.query_grades, args=(next_skip,))
+                default_queue.enqueue_call(func=self.query_grades, args=(next_skip,))

@@ -1,15 +1,15 @@
 import os
 from time import sleep
 import redis
-from rq import Worker, Queue, Connection
+from rq import Worker, Queue, Connection, worker
 from rq_scheduler import Scheduler
 
-listen = ['default']
+listen = ['default', 'low']
 
 redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
 
 conn = redis.from_url(redis_url)
-queue = Queue(connection=conn)
+queue = Queue(connection=conn, )
 scheduler = Scheduler(queue=queue, connection=conn)
 
 def exception_handler(): 
