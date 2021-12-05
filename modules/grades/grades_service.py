@@ -28,7 +28,9 @@ class GradesService:
         return response
     
     async def assignments(self, query, genesisId): 
-        response = await self.genesisService.get_assignments(query, genesisId)
+        try: 
+            response = await self.genesisService.get_assignments(query, genesisId)
+        except Exception: response = []
         if isinstance(response, Response):
             return response
 

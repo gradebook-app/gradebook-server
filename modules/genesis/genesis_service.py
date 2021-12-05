@@ -182,6 +182,7 @@ class GenesisService:
             data = []
 
             for assignment in assignments: 
+                message = None
                 columns = pq(assignment).children('td')
                 marking_period = pq(columns[0]).text()
                 date = pq(columns[1]).text()
@@ -206,8 +207,8 @@ class GenesisService:
                         percentage = None
    
                 points = pq(columns[5]).remove('div').text()
-                points = points if points else points_text
-           
+                if points_text: message = points_text 
+
                 comment = pq(columns[6]).text()
                 comment = comment.replace('"', '') if comment else ""
 
@@ -219,6 +220,7 @@ class GenesisService:
                     "teacher": teacher,
                     "category": category,
                     "name": name,
+                    "message": message,
                     "grade": {
                         "points": points,
                         "percentage": percentage,

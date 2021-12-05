@@ -1,16 +1,16 @@
 version: '3'
 services:
-  web:
-    build: .
-    ports:
-        - "8080:8080"
-    volumes:
-        - .:/app
-    environment:
-      - ENV_MODE="production"
-      - REDISTOGO_URL=$REDISTOGO_URL
-    depends_on:
-      - mongodb
+  # web:
+  #   build: .
+  #   ports:
+  #       - "8080:8080"
+  #   volumes:
+  #       - .:/app
+  #   environment:
+  #     - ENV_MODE="production"
+  #     - REDISTOGO_URL=$REDISTOGO_URL
+  #   depends_on:
+  #     - mongodb
       # - redis-server
       # - rq-scheduler
   # rq-scheduler: 
