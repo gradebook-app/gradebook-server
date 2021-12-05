@@ -6,7 +6,7 @@ from rq_scheduler import Scheduler
 
 listen = ['default']
 
-redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
+redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
 
 conn = redis.from_url(redis_url)
 queue = Queue(connection=conn)
@@ -16,10 +16,8 @@ def exception_handler():
     print("exception")
 
 def bootstrap(): 
-    from modules.redis.grades import schedule_grade_persisting
     try: 
         with Connection(conn):
-            schedule_grade_persisting()
             worker = Worker(map(Queue, listen))
             worker.work()
 

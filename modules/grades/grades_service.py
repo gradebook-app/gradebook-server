@@ -349,7 +349,8 @@ class GradesService:
             )
         except Exception: pass
         finally: 
-            scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
+            pass
+            # scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
 
     def clean_assignments(self, userId, assignments): 
         assignment_repository = AssignmentRepository(db=connect_db())
@@ -485,7 +486,6 @@ class GradesService:
             returned_total = len(docs)
     
             startTime = time.time()
-            print()
             loop = asyncio.get_event_loop()
             coros = [ self.persist_assignments(doc, persist_time) for doc in list(docs) ]
             loop.run_until_complete(asyncio.gather(*coros))

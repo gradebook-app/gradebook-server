@@ -190,6 +190,11 @@ class GenesisService:
                 teacher = teacherElement.text()
                 category = pq(columns[3]).remove('div').text()
                 name = pq(columns[4]).remove('div').text()
+        
+                try: 
+                    points_raw = columns[5]
+                    _, points_text = (pq(i).text() for i in pq(points_raw).find("div").children("div"))    
+                except Exception: pass  
 
                 gradeDivs = pq(columns[5]).children('div')
                 percentage = None
@@ -199,8 +204,10 @@ class GenesisService:
                         percentage = float(pq(gradeDivs[-1]).remove('div').text()[:-1])
                     except ValueError: 
                         percentage = None
-
+   
                 points = pq(columns[5]).remove('div').text()
+                points = points if points else points_text
+           
                 comment = pq(columns[6]).text()
                 comment = comment.replace('"', '') if comment else ""
 

@@ -6,8 +6,33 @@ services:
         - "8080:8080"
     volumes:
         - .:/app
+    environment:
+      - ENV_MODE="production"
+      - REDISTOGO_URL=$REDISTOGO_URL
     depends_on:
       - mongodb
+      # - redis-server
+      # - rq-scheduler
+  # rq-scheduler: 
+  #   image: anarchy/rq-scheduler
+  #   command: rqscheduler --url $REDISTOGO_URL
+  #   deploy: 
+  #     replicas: 1
+  #   depends_on:
+  #     - redis-server
+  # rq-worker:
+  #   build: .
+  #   command: python worker.py
+  #   deploy:
+  #     replicas: 1
+  #   depends_on:
+  #     - redis-server
+  #     - web
+  # redis-server:
+  #   image: "redis:alpine"
+  #   command: redis-server
+  #   ports:
+  #     - "6379:6379"
   mongodb:
     image: mongo:latest
     container_name: mongodb
@@ -17,7 +42,7 @@ services:
       - 27017:27017
     networks:
       - backend
-    restart: always
+    restart: always 
   
 networks:
   backend:
