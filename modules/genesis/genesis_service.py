@@ -195,6 +195,7 @@ class GenesisService:
                 try: 
                     points_raw = columns[5]
                     _, points_text = (pq(i).text() for i in pq(points_raw).find("div").children("div"))    
+                    if points_text: message = points_text 
                 except Exception: pass  
 
                 gradeDivs = pq(columns[5]).children('div')
@@ -207,7 +208,6 @@ class GenesisService:
                         percentage = None
    
                 points = pq(columns[5]).remove('div').text()
-                if points_text: message = points_text 
 
                 comment = pq(columns[6]).text()
                 comment = comment.replace('"', '') if comment else ""
