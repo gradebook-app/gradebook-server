@@ -20,6 +20,6 @@ def login(body):
     return response
 
 @auth.route('/auth/logout', methods=['POST'])
-@genesisId
-def logout(genesisId): 
-    return auth_service.logout(genesisId)
+@body
+def logout(body): 
+    return auth_service.logout(body)
