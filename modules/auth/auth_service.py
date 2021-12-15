@@ -13,8 +13,8 @@ class AuthService:
         self.genesis_service = GenesisService()
         self.fernet = Fernet(config["fernet"]["key"].encode())
       
-    def logout(self, genesisId): 
-        userId = genesisId['userId']
+    def logout(self, body): 
+        userId = body['userId']
         user_modal = db.get_collection("users")
         user_modal.update_one({
             "_id": ObjectId(userId),
@@ -90,6 +90,13 @@ class AuthService:
                         "as": "gpaHistory"
                     }
                 },
+                {
+                    "$addFields": {
+                        "_id": {
+                            "$toString": "$_id",
+                        }
+                    }
+                }
             ])
         
             user = list(user)[0]
