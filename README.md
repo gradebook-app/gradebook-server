@@ -2,10 +2,18 @@
 
 API that powers Gradebook / Genesus App
 
+# Start Virtual Environment
+
+- . ./env/bin/activate (MacOS)
+
+# Install Python Dependencies
+
+- pip install -r requirements.txt
+
 # Run Locally
 
 Run These Commands to start server locally. 
-Important Note: run MongoDB Service commands first.
+Important Note: Run MongoDB Service commands first.
 
 1. redis-server
 2. rqscheduler
