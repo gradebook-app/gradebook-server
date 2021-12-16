@@ -113,7 +113,7 @@ class GradesService:
 
                 for course in course_mps: 
                     try: 
-                        percentage = course['grade']['percentage']
+                        percentage = float(course['grade']['percentage'])
                         if percentage and percentage > 0: 
                             course_grade_total += percentage
                             course_count += 1
@@ -130,7 +130,7 @@ class GradesService:
             percentage = course['grade']['percentage']
             percentage = int(float(percentage)) if percentage else percentage
 
-            if (percentage and percentage != 0): 
+            if percentage and percentage != 0: 
                 name = course["name"]
 
                 for weight in weights: 
@@ -151,8 +151,8 @@ class GradesService:
 
             else:
                 excluded_courses += 1
-
-        divisor = course_points if course_points > 0 else (len(courses) - excluded_courses)
+        
+        divisor = course_points if course_points > 0 else (len(course_loop) - excluded_courses)
         final_gpa_weighted = gpa_weighted_total / divisor
         final_gpa_unweighted = gpa_unweighted_total / divisor
 
