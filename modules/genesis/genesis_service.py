@@ -250,18 +250,20 @@ class GenesisService:
         courses = []
 
         for row in rows: 
-            columns = pq(row).children('td')
-            name = pq(columns[0]).text()
-            teacher = pq(columns[3]).text()
+            try: 
+                columns = pq(row).children('td')
+                name = pq(columns[0]).text()
+                teacher = pq(columns[3]).text()
 
-            weight = pq(columns[-2]).text()
-            weight = float(weight.strip()) if weight else None
+                weight = pq(columns[-2]).text()
+                weight = float(weight.strip()) if weight else None
 
-            courses.append({
-                "name": name,
-                "teacher": teacher,
-                "weight": weight,
-            })
+                courses.append({
+                    "name": name,
+                    "teacher": teacher,
+                    "weight": weight,
+                })
+            except Exception: continue
         
         return courses
 
