@@ -128,7 +128,7 @@ class GradesService:
 
         for course in course_loop: 
             percentage = course['grade']['percentage']
-            percentage = int(float(percentage)) if percentage else percentage
+            percentage = round(float(percentage)) if percentage else percentage
 
             if percentage and percentage != 0: 
                 name = course["name"]
