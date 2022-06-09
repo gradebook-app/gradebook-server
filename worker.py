@@ -6,7 +6,7 @@ from decouple import config
 
 listen = ['default', 'low']
 
-redis_url = config('REDIS_TLS_URL', 'redis://localhost:6379')
+redis_url = config('REDIS_URL', 'redis://localhost:6379')
 print("Redis Connection URI: ", redis_url)
 
 conn = redis.from_url(redis_url)
