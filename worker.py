@@ -1,12 +1,13 @@
-import os
 from time import sleep
 import redis
-from rq import Worker, Queue, Connection, worker
+from rq import Worker, Queue, Connection
 from rq_scheduler import Scheduler
+from decouple import config
 
 listen = ['default', 'low']
 
-redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
+redis_url = config('REDIS_TLS_URL', 'redis://localhost:6379')
+print("Redis Connection URI: ", redis_url)
 
 conn = redis.from_url(redis_url)
 queue = Queue(connection=conn, )
