@@ -1,3 +1,4 @@
+from asyncio import exceptions
 import requests
 from pyquery import PyQuery as pq
 import re
@@ -285,8 +286,16 @@ class GenesisService:
         html = pq(response.text)
 
         rows = html.find("td:nth-child(1) > table.list:nth-child(1)").children("tr")
-        lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
-        locker = pq(rows[7]).find("td:nth-child(2)").text()
+        
+        try: 
+            locker = pq(rows[7]).find("td:nth-child(2)").text()
+        except Exception: 
+            locker = None; 
+
+        try: 
+            lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
+        except Exception: 
+            lunchBalance = None
 
         rows = html.find("td:nth-child(2) > table.list:nth-child(1)").children("tr")
         name = pq(rows[0]).find("td:nth-child(1)").text()
