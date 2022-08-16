@@ -1,12 +1,10 @@
-from asyncio import exceptions
 import requests
 from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
 from utils.grade import grade
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs
 from flask import Response
-import asyncio
 import aiohttp
 from http.cookies import SimpleCookie
 

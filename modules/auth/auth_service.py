@@ -1,4 +1,3 @@
-import json
 import jwt
 from modules.genesis.genesis_service import GenesisService
 from config.config import config
@@ -33,6 +32,8 @@ class AuthService:
         [ genesisToken, userId, access, studentId ] = await self.genesis_service.get_access_token(email, password, school_district)
         user = {} 
 
+        current_timestamp = datetime.datetime.today().replace(microsecond=0)
+
         if access: 
             encrypted_pass = self.encrypt_password(password) 
             doc = user_modal.find_one({ "email": email })
@@ -47,21 +48,23 @@ class AuthService:
                     "unweightedGPA": None,
                     "pastGPA": None,
                     "weightedGPA": None,
+                    "createdAt": current_timestamp,
+                    "loggedInAt": current_timestamp
                 })
                 mongoUserId = inserted_doc.inserted_id
             elif isinstance(doc, dict): 
                 updated_doc = user_modal.find_one_and_update(
                     { "email": email }, 
                     { "$set": { 
+                            "loggedInAt": current_timestamp,
                             "status": "active",
                             "pass": encrypted_pass,
                             "notificationToken": notificationToken,
                         }
                     }
                 )
+
                 mongoUserId = ObjectId(updated_doc['_id'])
-
-
             year = datetime.datetime.now().year
             month = datetime.datetime.now().month
             time_to_query = f"01/09/{year}" if 9 <= month <= 12 else f"01/09/{year - 1}"
