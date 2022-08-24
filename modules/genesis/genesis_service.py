@@ -1,4 +1,5 @@
 import requests
+from requests.utils import quote as encodeURL
 from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
@@ -26,37 +27,54 @@ class GenesisService:
 
         root_url = genesis['root']
         auth_route = genesis['auth']
-        url = f'{root_url}{auth_route}'
+        # login_route = genesis['login']
+        
+        # login_url = f'{root_url}{login_route}'
+        auth_url = f'{root_url}{auth_route}?j_username={encodeURL(email)}&j_password={encodeURL(password)}'
 
-        data = {'j_username': email, 'j_password': password }
-        headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
+        headers = { 
+            #'Content-Type': 'application/x-www-form-urlencoded'
+        }
+
+        #  login_cookies = {}
+
+        # async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
+        #     login_response, _ = await self.fetch(session, method="GET", url=login_url, headers=headers)
+        #     cookie_str = login_response.cookies
+        #     cookie = SimpleCookie()
+        #     cookie.load(cookie_str)
+        #     login_cookies_objs = [ SimpleCookie(i.OutputString()) for i in cookie.values()]
+
+        #     for obj in login_cookies_objs:
+        #         login_cookies = { **login_cookies, **{ key: obj[key].coded_value for key in obj.keys() }}
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
-            response = await self.fetch(session, method="POST", url=url,data=data, headers=headers, allow_redirects=False)
-
+            auth_response = await self.fetch(session, method="POST", url=auth_url, headers=headers, allow_redirects=False)
             access = False
-            if not response.headers['Location'].endswith(auth_route):
+            if not auth_response.headers['Location'].endswith(auth_route):
                 access = True
 
-            cookie_str = response.cookies
+            genesisToken = None
+            studentId = None
+
+            cookie_str = auth_response.cookies
             cookie = SimpleCookie()
             cookie.load(cookie_str)
-        
+
             cookies = {}
             for key, morsel in cookie.items():
                 cookies[key] = morsel.value
 
             genesisToken = cookies['JSESSIONID']
-
-            studentId = None
+            print(genesisToken)
 
             if access: 
                 try: 
-                    login_res, _ = await self.fetch(session, method="GET", url=response.headers['Location'], cookies=cookies)
+                    login_res = requests.get(auth_response.headers['Location'], cookies=cookies, allow_redirects=False)
                     login_url_params = parse_qs(login_res.url_obj.query_string)
                     studentId = login_url_params['studentid'][0]
                 except Exception: pass
-
+            
             return [ genesisToken, userId, access, studentId ]
     
     def access_granted(self, html): 
@@ -272,6 +290,7 @@ class GenesisService:
         main_route = genesis["main"]
 
         studentId = genesisId['studentId']
+
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=form&studentid={studentId}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
