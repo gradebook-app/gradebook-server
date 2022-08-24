@@ -10,6 +10,10 @@ API that powers Gradebook / Genesus App
 
 - pip install -r requirements.txt
 
+# Install Ruby Dependencies
+
+- bundle install 
+
 # Run Locally
 
 Run These Commands to start server locally. 

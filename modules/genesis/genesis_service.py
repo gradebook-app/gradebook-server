@@ -27,26 +27,12 @@ class GenesisService:
 
         root_url = genesis['root']
         auth_route = genesis['auth']
-        # login_route = genesis['login']
-        
-        # login_url = f'{root_url}{login_route}'
+
         auth_url = f'{root_url}{auth_route}?j_username={encodeURL(email)}&j_password={encodeURL(password)}'
 
         headers = { 
-            #'Content-Type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded',
         }
-
-        #  login_cookies = {}
-
-        # async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
-        #     login_response, _ = await self.fetch(session, method="GET", url=login_url, headers=headers)
-        #     cookie_str = login_response.cookies
-        #     cookie = SimpleCookie()
-        #     cookie.load(cookie_str)
-        #     login_cookies_objs = [ SimpleCookie(i.OutputString()) for i in cookie.values()]
-
-        #     for obj in login_cookies_objs:
-        #         login_cookies = { **login_cookies, **{ key: obj[key].coded_value for key in obj.keys() }}
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
             auth_response = await self.fetch(session, method="POST", url=auth_url, headers=headers, allow_redirects=False)
@@ -66,7 +52,6 @@ class GenesisService:
                 cookies[key] = morsel.value
 
             genesisToken = cookies['JSESSIONID']
-            print(genesisToken)
 
             if access: 
                 try: 

@@ -7,6 +7,3 @@ export LANG=en_CA.UTF-8
 mkdir .ruby-gems
 export GEM_HOME=$PWD/.ruby-gems
 export PATH=$PATH:$PWD/.ruby-gems/bin
-
-# install foreman
-# gem install foreman
