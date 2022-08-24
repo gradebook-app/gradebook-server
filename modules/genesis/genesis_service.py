@@ -70,7 +70,7 @@ class GenesisService:
 
             if access: 
                 try: 
-                    login_res = requests.get(auth_response.headers['Location'], cookies=cookies, allow_redirects=False)
+                    login_res = requests.get(auth_response.headers['Location'], cookies=cookies)
                     login_url_params = parse_qs(login_res.url_obj.query_string)
                     studentId = login_url_params['studentid'][0]
                 except Exception: pass
