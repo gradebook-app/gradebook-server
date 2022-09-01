@@ -36,9 +36,8 @@ class GenesisService:
         auth_url = f'{root_url}{auth_route}?j_username={encodeURL(email)}&j_password={encodeURL(password)}'
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
-            auth_response = await self.fetch(session, method="POST", url=auth_url, headers=global_headers)
+            auth_response = await self.fetch(session, method="POST", url=auth_url, headers=global_headers, allow_redirects=False)
             access = False
-    
             if not auth_response.headers['Location'].__contains__(auth_route):
                 access = True
 
@@ -57,7 +56,7 @@ class GenesisService:
        
             if access: 
                 try: 
-                    login_res = requests.get(auth_response.headers['Location'], cookies=cookies, headers=global_headers, allow_redirects=False)
+                    login_res = requests.get(auth_response.headers['Location'], cookies=cookies, headers=global_headers)
                     login_url_params = parse_qs(login_res.url.split("?")[1])
                     studentId = login_url_params['studentid'][0]
                 except Exception as e: {
