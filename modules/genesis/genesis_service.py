@@ -9,6 +9,11 @@ from flask import Response
 import aiohttp
 from http.cookies import SimpleCookie
 
+global_headers = { 
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/601.3.9 (KHTML, like Gecko) Version/9.0.2 Safari/601.3.9'
+}
+
 class GenesisService: 
     def __init__(self): 
         pass
@@ -30,12 +35,8 @@ class GenesisService:
 
         auth_url = f'{root_url}{auth_route}?j_username={encodeURL(email)}&j_password={encodeURL(password)}'
 
-        headers = { 
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
-
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
-            auth_response = await self.fetch(session, method="POST", url=auth_url, headers=headers, allow_redirects=False)
+            auth_response = await self.fetch(session, method="POST", url=auth_url, headers=global_headers, allow_redirects=False)
             access = False
             if not auth_response.headers['Location'].endswith(auth_route):
                 access = True
@@ -52,13 +53,15 @@ class GenesisService:
                 cookies[key] = morsel.value
 
             genesisToken = cookies['JSESSIONID']
-
+       
             if access: 
                 try: 
-                    login_res = requests.get(auth_response.headers['Location'], cookies=cookies)
-                    login_url_params = parse_qs(login_res.url_obj.query_string)
+                    login_res = requests.get(auth_response.headers['Location'], cookies=cookies, headers=global_headers)
+                    login_url_params = parse_qs(login_res.url.split("?")[1])
                     studentId = login_url_params['studentid'][0]
-                except Exception: pass
+                except Exception as e: {
+                    print('Error Getting Student ID', e)
+                }
             
             return [ genesisToken, userId, access, studentId ]
     
@@ -239,7 +242,7 @@ class GenesisService:
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=grading&tab3=current&action=form&studentid={studentId}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
-        response = requests.get(url, cookies=cookies)
+        response = requests.get(url, cookies=cookies, headers=global_headers)
         if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
@@ -279,7 +282,7 @@ class GenesisService:
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=form&studentid={studentId}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
-        response = requests.get(url, cookies=cookies)
+        response = requests.get(url, cookies=cookies, headers=global_headers)
         if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
@@ -332,7 +335,7 @@ class GenesisService:
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&action=ajaxGetBellScheduleForDate&studentid={studentId}&scheduleDate={date}&schedView=daily"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
-        response = requests.get(url, cookies=cookies)
+        response = requests.get(url, cookies=cookies, headers=global_headers)
         if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
@@ -373,7 +376,7 @@ class GenesisService:
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=grading&tab3=history&action=form&studentid={studentId}"
         cookies = { 'JSESSIONID': genesisId['token'] }
 
-        response = requests.get(url, cookies=cookies)
+        response = requests.get(url, cookies=cookies, headers=global_headers)
         if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,

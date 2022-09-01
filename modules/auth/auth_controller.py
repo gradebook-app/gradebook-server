@@ -10,7 +10,7 @@ auth_service = AuthService()
 @body
 def login(body): 
     userId, password, school_district = (body['userId'], body['pass'], body['schoolDistrict'])
-    notificationToken = body['notificationToken']
+    notificationToken = body.get('notificationToken', None)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     response =  loop.run_until_complete( 
