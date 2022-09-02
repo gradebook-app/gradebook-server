@@ -488,7 +488,7 @@ class GradesService:
 
             docs = list(response)
             returned_total = len(docs)
-    
+
             startTime = time.time()
             loop = asyncio.get_event_loop()
             coros = [ self.persist_assignments(doc, persist_time) for doc in list(docs) ]

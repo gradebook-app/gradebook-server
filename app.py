@@ -4,6 +4,7 @@ from modules.grades.grades_controller import grades as grades_blueprint
 from modules.user.user_controller import user as user_blueprint
 from modules.redis.grades import clear_queue
 from modules.redis.grades import schedule_grade_persisting
+from decouple import config
 
 app = Flask(__name__, instance_relative_config=False)
 
@@ -20,5 +21,5 @@ def home():
     return "All Systems Operational."
 
 if __name__ == "__main__": 
-    app.run(port=5000, debug=True)
+    app.run(port=config('PORT', 5000), debug=True)
 

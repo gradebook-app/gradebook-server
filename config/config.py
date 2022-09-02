@@ -3,8 +3,8 @@ from config.env.production import config as prodConfig
 from decouple import config, UndefinedValueError
 
 try: 
-    env_mode = config("ENV_MODE")
+    node_env = config("NODE_ENV")
 except UndefinedValueError: 
-    env_mode = "development"
+    node_env = "development"
 
-config = prodConfig if env_mode == "production" else devConfig
+config = prodConfig if node_env == "production" else devConfig

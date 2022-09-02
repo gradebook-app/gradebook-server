@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 services:
   mongodb:
     image: mongo:latest
@@ -8,9 +8,149 @@ services:
     ports:
       - 27017:27017
     networks:
-      - backend
+      - flask-backend
     restart: always 
-  
+  redis: 
+    image: redis:6.2-alpine
+    restart: always
+    container_name: redis-dev
+    ports:
+      - '6379:6379'
+    command: redis-server
+    networks:
+      - flask-backend
+    volumes: 
+      - cache:/data
+  rq-scheduler-dev:
+    container_name: rq-scheduler-dev
+    build:
+      context: .
+      target: development
+      dockerfile: ./Dockerfile
+    command: rqscheduler --url redis://redis-dev:6379
+    deploy:
+      replicas: 1
+    volumes:
+      - .:/usr/src/app
+    networks:
+      - flask-backend
+    depends_on:
+      - redis
+    restart: always 
+  rq-worker-dev:
+    container_name: rq-worker-dev
+    build:
+      context: .
+      target: development
+      dockerfile: ./Dockerfile
+    environment:
+      - REDIS_URL=redis://redis-dev:6379
+    command: python worker.py
+    deploy:
+      replicas: 1
+    volumes:
+      - .:/usr/src/app
+    networks:
+      - flask-backend
+    depends_on:
+      - redis
+      - rq-scheduler-dev
+    restart: always 
+
+  dev:
+    container_name: flask-api-dev
+    build:
+      context: .
+      target: development
+      dockerfile: ./Dockerfile
+    environment:
+      - REDIS_URL=redis://redis-dev:6379
+      - PORT=5001
+      - NODE_ENV=development
+      - MONGO_URI=$MONGO_URI
+      - FERNET_KEY=$FERNET_KEY
+      - JWT_TOKEN=$JWT_TOKEN
+      - FCM_TOKEN=$FCM_TOKEN
+    command: gunicorn --timeout 1000 --workers 1 --threads 4 --log-level debug --bind 0.0.0.0:5001 app:app
+    volumes:
+      - .:/usr/src/app
+    expose:
+      - 5001
+    ports:
+      - 5001:5001
+    networks:
+      - flask-backend
+    depends_on: 
+      - mongodb
+      - redis
+      - rq-worker-dev
+
+  rq-scheduler-prod:
+    container_name: rq-scheduler-prod
+    build:
+      context: .
+      target: production
+      dockerfile: ./Dockerfile
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=$REDIS_URL
+    command: "rqscheduler --url ${REDIS_URL}"
+    deploy:
+      replicas: 1
+    volumes:
+      - .:/usr/src/app
+    networks:
+      - flask-backend
+    restart: always 
+
+  rq-worker-prod:
+    container_name: rq-worker-prod
+    build:
+      context: .
+      target: production
+      dockerfile: ./Dockerfile
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=$REDIS_URL
+    command: python worker.py
+    deploy:
+      replicas: 1
+    volumes:
+      - .:/usr/src/app
+    networks:
+      - flask-backend
+    depends_on:
+      - rq-scheduler-prod
+    restart: always 
+  prod:
+    container_name: flask-api-prod
+    build:
+      context: .
+      target: production
+      dockerfile: ./Dockerfile
+    environment:
+      - REDIS_URL=$REDIS_URL
+      - PORT=8080
+      - NODE_ENV=production
+      - MONGO_URI=$MONGO_URI
+      - FERNET_KEY=$FERNET_KEY
+      - JWT_TOKEN=$JWT_TOKEN
+      - FCM_TOKEN=$FCM_TOKEN
+    command: gunicorn --timeout 1000 --workers 1 --threads 4 --log-level debug --bind 0.0.0.0:8080 app:app
+    volumes:
+      - .:/usr/src/app
+    expose:
+      - 8080
+    ports:
+      - 8080:8080
+    networks:
+      - flask-backend
+    depends_on: 
+      - rq-worker-prod
 networks:
-  backend:
+  flask-backend:
     driver: bridge
+
+volumes:
+  cache:
+    driver: local
