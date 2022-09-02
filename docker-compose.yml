@@ -130,19 +130,19 @@ services:
       dockerfile: ./Dockerfile
     environment:
       - REDIS_URL=$REDIS_URL
-      - PORT=8080
+      - PORT=$PORT
       - NODE_ENV=production
       - MONGO_URI=$MONGO_URI
       - FERNET_KEY=$FERNET_KEY
       - JWT_TOKEN=$JWT_TOKEN
       - FCM_TOKEN=$FCM_TOKEN
-    command: gunicorn --timeout 1000 --workers 1 --threads 4 --log-level debug --bind 0.0.0.0:8080 app:app
+    command: "gunicorn --timeout 1000 --workers 1 --threads 4 --log-level debug --bind 0.0.0.0:${PORT} app:app"
     volumes:
       - .:/usr/src/app
     expose:
-      - 8080
+      - ${PORT}
     ports:
-      - 8080:8080
+      - ${PORT}:${PORT}
     networks:
       - flask-backend
     depends_on: 

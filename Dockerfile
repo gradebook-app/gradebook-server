@@ -26,4 +26,4 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
-CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn"  , "--timeout", "1000", "--workers", "1", "--threads", "4", "--log-level", "debug", "--bind", "0.0.0.0:${PORT}", "app:app"]
