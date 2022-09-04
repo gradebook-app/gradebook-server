@@ -1,1 +1,3 @@
-web: env > .env; env GEM_HOME=$HOME/.ruby-gems env PATH=$PATH:$HOME/.ruby-gems/bin foreman start -f ProcfileMulti
+web: gunicorn app:app -w 4 --threads 12
+scheduler: rqscheduler --url $REDIS_URL
+worker: python worker.py
