@@ -10,6 +10,4 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
-EXPOSE 8080
-
-CMD ["gunicorn"  , "-b", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn"  , "-w", "4", "--threads", "12", "app:app"]
