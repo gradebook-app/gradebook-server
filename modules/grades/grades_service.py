@@ -488,6 +488,7 @@ class GradesService:
 
             docs = list(response)
             returned_total = len(docs)
+            print(returned_total)
     
             startTime = time.time()
             loop = asyncio.get_event_loop()
@@ -500,7 +501,8 @@ class GradesService:
                 f"{skip}-{limit + skip if limit >= len(docs) else skip + len(docs)}: ", 
                 endTime - startTime
             )
-        except Exception: pass
+        except Exception as e: 
+            print("Exception", e)
         finally: 
             if returned_total == 0 or returned_total is None: 
                 default_queue.enqueue_call(func=self.save_persist_time, args=(persist_time, ))
