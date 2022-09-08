@@ -2,6 +2,10 @@
 
 FROM python:3.10
 
+ARG REDIS_URL
+
+ENV REDIS_URL_ENV ${REDIS_URL}
+
 COPY ./requirements.txt /app/requirements.txt
 
 WORKDIR /app
@@ -10,8 +14,4 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
-ARG REDIS_URL
-
-ENV REDIS_URL $REDIS_URL
-
-CMD ["rqscheduler", "--url",  "$REDIS_URL"]
+CMD ["rqscheduler", "--url",  "${REDIS_URL_ENV}"]
