@@ -20,6 +20,7 @@ def bootstrap():
     try: 
         with Connection(conn):
             worker = Worker(map(Queue, listen))
+            print(f"Working @ {worker.pid}")
             worker.work()
 
     except redis.exceptions.ConnectionError as _: 

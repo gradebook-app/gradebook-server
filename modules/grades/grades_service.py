@@ -1,3 +1,4 @@
+import traceback
 from flask import Response
 from worker import conn
 from mongo_config import connect_db
@@ -15,6 +16,7 @@ from modules.grades.assignments_repository import AssignmentRepository
 from modules.grades.grades_repository import GradesRepository 
 from modules.grades.gpa_history_repository import GPAHistoryRepository
 from rq import Queue
+import gc
 
 low_queue = Queue('low', connection=conn)
 default_queue = Queue('default', connection=conn)
@@ -61,7 +63,7 @@ class GradesService:
         unweighted = gpa["unweightedGPA"]
         weighted = gpa["weightedGPA"]
         low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
-
+    
         return gpa
 
     def query_past_grades(self, genesisId):
@@ -340,6 +342,8 @@ class GradesService:
 
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
             default_queue.enqueue(f=self.send_gpa_update, args=(user, gpa))
+        
+        del user; gc.collect(generation=2)
 
     def save_persist_time(self, persist_time):
         user_repository = UserRepository(db=connect_db())
@@ -368,6 +372,8 @@ class GradesService:
             "userId": userId,
             "_id": { "$in": ids },
         })
+
+        del assignments; gc.collect(generation=2)
     
     def store_assignments(self, user, assignments, send_notifications):
         assignment_repository = AssignmentRepository(db=connect_db())
@@ -397,6 +403,8 @@ class GradesService:
                 default_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon))
         except Exception: 
             pass
+        finally: 
+            del assignments; user; gc.collect(generation=2)
 
     def find_assignments(self, all_assignments, assignments):
         docs = []
@@ -474,6 +482,8 @@ class GradesService:
         if not len(assignments) and not len(user['grades']):
             default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
 
+        del assignments; del serialized_new_assignments; del serialized_stored_assignments; gc.collect(generation=2)
+
     def query_grades(self, skip): 
         user_repository = UserRepository(db=connect_db())
         returned_total = None
@@ -488,7 +498,6 @@ class GradesService:
 
             docs = list(response)
             returned_total = len(docs)
-            print(returned_total)
     
             startTime = time.time()
             loop = asyncio.get_event_loop()
@@ -502,11 +511,12 @@ class GradesService:
                 endTime - startTime
             )
         except Exception as e: 
-            print("Exception", e)
+            traceback.format_exception_only(e)
         finally: 
             if returned_total == 0 or returned_total is None: 
                 default_queue.enqueue_call(func=self.save_persist_time, args=(persist_time, ))
                 next_skip = 0
 
             if next_skip != 0: 
+                del response; gc.collect(generation=2)
                 default_queue.enqueue_call(func=self.query_grades, args=(next_skip,))
