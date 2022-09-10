@@ -13,7 +13,7 @@ queue = Queue(connection=conn, )
 scheduler = Scheduler(queue=queue, connection=conn)
 
 def black_hole(job, *_exc_info):
-    print("Job Cancelled due to failure: ", job.id)
+    print("Job Cancelled due to exception: ", job.id)
     job.cancel()
     return False
 
