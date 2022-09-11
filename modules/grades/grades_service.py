@@ -52,39 +52,50 @@ class GradesService:
         })
 
     def query_live_gpa(self, genesisId): 
-        response = self.query_user_grade(genesisId)
+        try:
+            response = self.query_user_grade(genesisId)
 
-        if isinstance(response, Response):
-            return response
+            if isinstance(response, Response):
+                return response
 
-        gpa = self.caculate_gpa(response)
+            gpa = self.caculate_gpa(response)
 
-        user = { "_id": genesisId["userId"] }
-        unweighted = gpa["unweightedGPA"]
-        weighted = gpa["weightedGPA"]
-        low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
-    
-        return gpa
+            user = { "_id": genesisId["userId"] }
+            unweighted = gpa["unweightedGPA"]
+            weighted = gpa["weightedGPA"]
+            low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
+        
+            return gpa
+        except Exception as e:
+            traceback.format_exception_only(e)
+            return {
+                "unweightedGPA": None,
+                "weightedGPA": None
+            }
 
     def query_past_grades(self, genesisId):
-        response = self.genesisService.query_past_grades(genesisId)
-        if isinstance(response, Response):
-            return response
+        try:
+            response = self.genesisService.query_past_grades(genesisId)
+            if isinstance(response, Response):
+                return response
 
 
-        courses = response[0]
-        weights = response[1]
-        gpas = []
+            courses = response[0]
+            weights = response[1]
+            gpas = []
 
-        for key in courses.keys(): 
-            gradeCourses = courses[key]
-            gradeWeights = weights[key]
-            calculated_gpa = self.caculate_gpa([ None, gradeCourses, gradeWeights ])
-            gpas.append({
-                **calculated_gpa, "gradeLevel": key, "year": courses[key][0]["year"],
-            })
+            for key in courses.keys(): 
+                gradeCourses = courses[key]
+                gradeWeights = weights[key]
+                calculated_gpa = self.caculate_gpa([ None, gradeCourses, gradeWeights ])
+                gpas.append({
+                    **calculated_gpa, "gradeLevel": key, "year": courses[key][0]["year"],
+                })
 
-        return { "pastGradePointAverages": gpas }
+            return { "pastGradePointAverages": gpas }
+        except Exception as e:
+            traceback.format_exception_only(e)
+            return { "pastGradePointAverages": [] }
 
     def caculate_gpa(self, response): 
         courses_raw = response[1]
