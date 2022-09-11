@@ -1,3 +1,4 @@
+import traceback
 import requests
 from requests.utils import quote as encodeURL
 from pyquery import PyQuery as pq
@@ -83,74 +84,84 @@ class GenesisService:
     
         cookies = { 'JSESSIONID': genesisId['token'] }
         response = requests.get(url, cookies=cookies)
-        if not self.access_granted(response.text): return Response(
-            "Session Expired",
-            401,
-        )
 
-        html = response.text
-        parser = pq(html)
-        classes = parser.find('table.list')
-        all_classes = list(classes.items('tr[class="listrowodd"]')) + list(classes.items('tr[class="listroweven"]'))
+        try:
 
-        marking_period_options = parser.find("select[name='fldMarkingPeriod']").children("option")
+            if not self.access_granted(response.text): return Response(
+                "Session Expired",
+                401,
+            )
 
-        marking_periods = []
-        current_marking_period = ""
+            html = response.text
+            parser = pq(html)
+            classes = parser.find('table.list')
+            all_classes = list(classes.items('tr[class="listrowodd"]')) + list(classes.items('tr[class="listroweven"]'))
 
-        for i in marking_period_options: 
-            optionTag = pq(i)
-            value = optionTag.attr("value")
-            if optionTag.attr('selected') == 'selected':
-                current_marking_period = value
-            marking_periods.append(value)
+            marking_period_options = parser.find("select[name='fldMarkingPeriod']").children("option")
 
-        classes = []
+            marking_periods = []
+            current_marking_period = ""
 
-        for school_class in all_classes: 
-            teacher = pq(school_class.children('td')[1]).remove('b').text()
-            
-            final_grade = str()
-            final_grade_raw = pq(school_class.children('td')[2]).find("table tr > td").text()
-            if not "no grades" in final_grade_raw.lower() and not "not graded" in final_grade_raw.lower(): 
-                final_grade = final_grade_raw.split("%")[0]
+            for i in marking_period_options: 
+                optionTag = pq(i)
+                value = optionTag.attr("value")
+                if optionTag.attr('selected') == 'selected':
+                    current_marking_period = value
+                marking_periods.append(value)
 
-            raw_grade = school_class.find("td[title='View Course Summary'] > div").text()
-            courseIdRaw = school_class.find("td.cellLeft > span.categorytab").attr("onclick")
-    
-            try: 
-                courseIds = re.findall("'.*'", courseIdRaw)
-                [ courseId, sectionId ] = courseIds[0].split(',')[1].replace("'", "").split(":")
-            except Exception: 
-                [ courseId, sectionId ] = ["", ""]
+            classes = []
 
-            
-            try: 
-                grade = int(raw_grade[:-1])
-            except: 
-                grade = None
+            for school_class in all_classes: 
+                teacher = pq(school_class.children('td')[1]).remove('b').text()
+                
+                final_grade = str()
+                final_grade_raw = pq(school_class.children('td')[2]).find("table tr > td").text()
+                if not "no grades" in final_grade_raw.lower() and not "not graded" in final_grade_raw.lower(): 
+                    final_grade = final_grade_raw.split("%")[0]
 
-            class_name = school_class.find("span.categorytab > font > u").text()
-            grade_letter = school_class.find("td[title='View Course Summary'] ~ td").text()
+                raw_grade = school_class.find("td[title='View Course Summary'] > div").text()
+                courseIdRaw = school_class.find("td.cellLeft > span.categorytab").attr("onclick")
+        
+                try: 
+                    courseIds = re.findall("'.*'", courseIdRaw)
+                    [ courseId, sectionId ] = courseIds[0].split(',')[1].replace("'", "").split(":")
+                except Exception: 
+                    [ courseId, sectionId ] = ["", ""]
 
-            classes.append({
-                "teacher": teacher,
-                "grade": {
-                    "percentage": grade if grade else final_grade,
-                    "letter": grade_letter,
-                    "projected": bool(final_grade), # Doesn't work for Montegomery
-                },
-                "name": class_name,
-                "courseId": courseId,
-                "sectionId": sectionId
-            })
+                
+                try: 
+                    grade = int(raw_grade[:-1])
+                except: 
+                    grade = None
 
-        response = {
-            "courses": classes, 
-            "markingPeriods": marking_periods,
-            "currentMarkingPeriod": current_marking_period,
-        }
-        return response
+                class_name = school_class.find("span.categorytab > font > u").text()
+                grade_letter = school_class.find("td[title='View Course Summary'] ~ td").text()
+
+                classes.append({
+                    "teacher": teacher,
+                    "grade": {
+                        "percentage": grade if grade else final_grade,
+                        "letter": grade_letter,
+                        "projected": bool(final_grade), # Doesn't work for Montegomery
+                    },
+                    "name": class_name,
+                    "courseId": courseId,
+                    "sectionId": sectionId
+                })
+
+            response = {
+                "courses": classes, 
+                "markingPeriods": marking_periods,
+                "currentMarkingPeriod": current_marking_period,
+            }
+            return response
+        except Exception as e: 
+            print("Exception @ query grades", traceback.format_exception_only(e))
+            return {
+                "courses": None, 
+                "markingPeriods": None,
+                "currentMarkingPeriod": None,
+            }
     
     async def get_assignments(self, query, genesisId): 
         genesis = genesis_config[genesisId['schoolDistrict']]
