@@ -10,4 +10,4 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
-CMD ["gunicorn", "app:app"]
+CMD ["gunicorn", "-w", "4", "--threads", "12", "app:app"]
