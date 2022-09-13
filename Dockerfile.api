@@ -10,4 +10,4 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
-CMD ["gunicorn", "-w", "2", "--max-requests", "250", "--max-requests-jitter", "100", "app:app"]
+CMD ["gunicorn", "-w", "1", "--max-requests", "250", "--max-requests-jitter", "100", "app:app"]
