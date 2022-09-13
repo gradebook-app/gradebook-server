@@ -16,7 +16,6 @@ from modules.grades.assignments_repository import AssignmentRepository
 from modules.grades.grades_repository import GradesRepository 
 from modules.grades.gpa_history_repository import GPAHistoryRepository
 from rq import Queue
-import gc
 
 low_queue = Queue('low', connection=conn)
 default_queue = Queue('default', connection=conn)
@@ -65,6 +64,8 @@ class GradesService:
             weighted = gpa["weightedGPA"]
             low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
         
+            del unweighted; del weighted; del response; 
+
             return gpa
         except Exception as e:
             traceback.format_exception_only(e)
@@ -335,6 +336,8 @@ class GradesService:
                 all_mp_grades.append(mp_grades)
                 all_mp_coures.append(mp_grades["courses"])
         
+        del grades; del mps; 
+
         return ( all_mp_grades, all_mp_coures, course_weights )
 
     def query_and_save_grades(self, genesisId, user):
@@ -354,7 +357,7 @@ class GradesService:
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
             default_queue.enqueue(f=self.send_gpa_update, args=(user, gpa))
         
-        del user; gc.collect(generation=2)
+        del user
 
     def save_persist_time(self, persist_time):
         user_repository = UserRepository(db=connect_db())
@@ -366,10 +369,8 @@ class GradesService:
                     "lastPersistTimestamp": persist_time,
                 }}
             )
-        except Exception: pass
-        finally: 
-            pass
-            # scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
+        except Exception as e: 
+            traceback.format_exception_only(e)
 
     def clean_assignments(self, userId, assignments): 
         assignment_repository = AssignmentRepository(db=connect_db())
@@ -384,7 +385,7 @@ class GradesService:
             "_id": { "$in": ids },
         })
 
-        del assignments; gc.collect(generation=2)
+        del assignments
     
     def store_assignments(self, user, assignments, send_notifications):
         assignment_repository = AssignmentRepository(db=connect_db())
@@ -415,7 +416,7 @@ class GradesService:
         except Exception: 
             pass
         finally: 
-            del assignments; user; gc.collect(generation=2)
+            del assignments
 
     def find_assignments(self, all_assignments, assignments):
         docs = []
@@ -493,7 +494,7 @@ class GradesService:
         if not len(assignments) and not len(user['grades']):
             default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades')
 
-        del assignments; del serialized_new_assignments; del serialized_stored_assignments; gc.collect(generation=2)
+        del assignments; del serialized_new_assignments; del serialized_stored_assignments
 
     def query_grades(self, skip): 
         user_repository = UserRepository(db=connect_db())
@@ -529,5 +530,5 @@ class GradesService:
                 next_skip = 0
 
             if next_skip != 0: 
-                del response; gc.collect(generation=2)
+                del response
                 default_queue.enqueue_call(func=self.query_grades, args=(next_skip,), description='query grades')

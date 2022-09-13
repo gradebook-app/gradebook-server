@@ -1,3 +1,4 @@
+import gc
 import traceback
 import requests
 from requests.utils import quote as encodeURL
@@ -60,10 +61,12 @@ class GenesisService:
                     login_res = requests.get(auth_response.headers['Location'], cookies=cookies, headers=global_headers)
                     login_url_params = parse_qs(login_res.url.split("?")[1])
                     studentId = login_url_params['studentid'][0]
+                    del login_res
                 except Exception as e: {
                     print('Error Getting Student ID', e)
                 }
             
+            del auth_response
             return [ genesisToken, userId, access, studentId ]
     
     def access_granted(self, html): 
@@ -149,14 +152,19 @@ class GenesisService:
                     "sectionId": sectionId
                 })
 
-            response = {
+            query_response = {
                 "courses": classes, 
                 "markingPeriods": marking_periods,
                 "currentMarkingPeriod": current_marking_period,
             }
-            return response
+
+            del response; 
+            return query_response
         except Exception as e: 
             print("Exception @ query grades", traceback.format_exception_only(e))
+            gc.collect(generation=2)
+
+            del response; 
             return {
                 "courses": None, 
                 "markingPeriods": None,
