@@ -10,4 +10,8 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
+ARG FCM_TOKEN
+
+ENV FCM_TOKEN = ${FCM_TOKEN}
+
 CMD ["honcho", "start"]
