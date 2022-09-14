@@ -39,10 +39,6 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
-      - run:
-          name: Run tests
-          command: |
-            docker run gradebook-web
 
   deploy:
     working_directory: /app
