@@ -44,10 +44,6 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
-      - run: 
-          name: Run Tests
-          command: |
-            docker run --env-file=.env gradebook-web
       - run:
           name: Initialize doctl
           command: |
