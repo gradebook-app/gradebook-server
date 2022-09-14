@@ -3,22 +3,20 @@ orbs:
   doctl: digitalocean/cli@0.1.1
 
 workflows:
+  build:
+    jobs: 
+      - build 
   install_and_configure_cli:
     jobs:
       - doctl/install_and_initialize_cli:
           executor: doctl/default
-  build:
+  deploy: 
     jobs: 
-      - build 
+      - deploy
 
 jobs:
   build:
     working_directory: /app
-    parameters:
-      digitalocean-access-token:
-        default: DIGITALOCEAN_ACCESS_TOKEN
-        description: The access token to connect DigitalOcean
-        type: env_var_name
     docker:
       - image: docker:17.05.0-ce-git
         environment:
@@ -54,6 +52,13 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
+  deploy: 
+    parameters:
+      digitalocean-access-token:
+        default: DIGITALOCEAN_ACCESS_TOKEN
+        description: The access token to connect DigitalOcean
+        type: env_var_name
+    steps: 
       - run:
           name: Initialize doctl
           command: |
