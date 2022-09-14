@@ -10,12 +10,12 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
-ARG FCM_TOKEN \
-    MONGO_URI \
-    REDIS_URL \
-    ENV_MODE \
-    FERNET_KEY \
-    JWT_TOKEN
+ARG FCM_TOKEN 
+ARG MONGO_URI 
+ARG REDIS_URL 
+ARG ENV_MODE 
+ARG FERNET_KEY 
+ARG JWT_TOKEN
 
 ENV FCM_TOKEN = ${FCM_TOKEN} \
     MONGO_URI = ${MONGO_URI} \
