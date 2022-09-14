@@ -44,6 +44,8 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
+      - doctl/install_and_initialize_cli:
+          executor: doctl/default
       - run:
           name: Initialize doctl
           command: |
