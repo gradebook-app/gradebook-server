@@ -4,6 +4,11 @@ orbs:
 jobs:
   build:
     working_directory: /app
+    parameters:
+      digitalocean-access-token:
+        default: DIGITALOCEAN_ACCESS_TOKEN
+        description: The access token to connect DigitalOcean
+        type: env_var_name
     docker:
       - image: docker:17.05.0-ce-git
         environment:
@@ -39,19 +44,10 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
-
-  deploy:
-    working_directory: /app
-    docker:
-      - image: docker:17.05.0-ce-git
-    description: |
-      Install doctl and initialize to connect to DigitalOcean then deploy gradebook-web image
-    parameters:
-      digitalocean-access-token:
-        default: DIGITALOCEAN_ACCESS_TOKEN
-        description: The access token to connect DigitalOcean
-        type: env_var_name
-    steps:
+      - run: 
+          name: Run Tests
+          command: |
+            docker run gradebook-web
       - run:
           name: Initialize doctl
           command: |
@@ -67,4 +63,5 @@ jobs:
               docker tag gradebook-web "registry.digitalocean.com/genesus/gradebook-web"
               docker push "registry.digitalocean.com/genesus/gradebook-web"
             fi
+      
       
