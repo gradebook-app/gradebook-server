@@ -7,10 +7,9 @@ workflows:
     jobs:
       - doctl/install_and_initialize_cli:
           executor: doctl/default
-  build_and_deploy:
-    jobs: 
-      - build 
-
+      - build:
+          executor: default
+          
 jobs:
   build:
     working_directory: /app
