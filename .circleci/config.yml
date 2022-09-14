@@ -3,16 +3,16 @@ orbs:
   cli: digitalocean/cli@0.1.1
 jobs:
   build:
-    environment:
-      FCM_TOKEN: $FCM_TOKEN
-      FERNET_KEY: $FERNET_KEY
-      JWT_TOKEN: $JWT_TOKEN
-      MONGO_URI: $MONGO_URI
-      REDIS_URL: $REDIS_URL
-      ENV_MODE: $ENV_MODE
     working_directory: /app
     docker:
       - image: docker:17.05.0-ce-git
+        environment:
+          FCM_TOKEN: $FCM_TOKEN
+          FERNET_KEY: $FERNET_KEY
+          JWT_TOKEN: $JWT_TOKEN
+          MONGO_URI: $MONGO_URI
+          REDIS_URL: $REDIS_URL
+          ENV_MODE: $ENV_MODE
     steps:
       - checkout
       - setup_remote_docker
