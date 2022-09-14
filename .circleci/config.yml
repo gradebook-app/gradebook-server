@@ -50,12 +50,12 @@ jobs:
         type: env_var_name
     steps:
       - run:
-        name: Initialize doctl
-        command: |
-          doctl auth init -t $<<parameters.digitalocean-access-token>>
+          name: Initialize doctl
+          command: |
+            doctl auth init -t $<<parameters.digitalocean-access-token>>
       - run:
-        name: Login to Registry
-        command: |
+          name: Login to Registry
+          command: |
           doctl registry login
       - run: 
           name: push gradebook-web image 
