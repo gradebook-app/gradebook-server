@@ -38,6 +38,9 @@ jobs:
             docker run gradebook-web
 
   deploy:
+    working_directory: /app
+    docker:
+      - image: docker:17.05.0-ce-git
     description: |
       Install doctl and initialize to connect to DigitalOcean then deploy gradebook-web image
     parameters:
