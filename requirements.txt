@@ -7,10 +7,8 @@ Flask==2.0.2
 gunicorn==20.1.0
 idna==3.3
 itsdangerous==2.0.1
-Jinja2==3.0.2
 lxml==4.9.0
 MarkupSafe==2.0.1
-pip==21.3.1
 pyquery==1.4.3
 requests==2.26.0
 requests-toolbelt==0.9.1
@@ -19,7 +17,6 @@ urllib3==1.26.7
 Werkzeug==2.0.2
 wheel==0.37.0
 PyJWT==2.3.0
-pyquery==1.4.3
 python-dotenv==0.19.1
 python-decouple==3.5
 Flask-PyMongo==2.3.0
@@ -28,9 +25,7 @@ dnspython==2.1.0
 rq==1.10.0
 rq_scheduler==0.11.0
 redis==3.5.3
-Flask-RQ2==18.3
 numpy==1.22.4
 exponent_server_sdk==2.0.0
-txFCM==0.0.1
 pyfcm==1.5.2
 aiohttp==3.8.1
