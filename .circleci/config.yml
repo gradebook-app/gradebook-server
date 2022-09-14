@@ -1,65 +1,68 @@
 version: 2.1
 orbs:
   cli: digitalocean/cli@0.1.1
-jobs:
-  build:
-    working_directory: /app
-    parameters:
-      digitalocean-access-token:
-        default: DIGITALOCEAN_ACCESS_TOKEN
-        description: The access token to connect DigitalOcean
-        type: env_var_name
-    docker:
-      - image: docker:17.05.0-ce-git
-        environment:
-          FCM_TOKEN: $FCM_TOKEN
-          FERNET_KEY: $FERNET_KEY
-          JWT_TOKEN: $JWT_TOKEN
-          MONGO_URI: $MONGO_URI
-          REDIS_URL: $REDIS_URL
-          ENV_MODE: $ENV_MODE
-    steps:
-      - checkout
-      - setup_remote_docker
-      - restore_cache:
-          keys:
-            - v1-{{ .Branch }}
-          paths:
-            - /caches/app.tar
-      - run:
-          name: Load Docker image layer cache
-          command: |
-            set +o pipefail
-            docker load -i /caches/app.tar | true
-      - run:
-          name: Build application Docker image
-          command: |
-            docker build --cache-from=app -t gradebook-web .
-      - run:
-          name: Save Docker image layer cache
-          command: |
-            mkdir -p /caches
-            docker save -o /caches/app.tar gradebook-web
-      - save_cache:
-          key: v1-{{ .Branch }}-{{ epoch }}
-          paths:
-            - /caches/app.tar
+
+workflows:
+  install_and_configure_cli:
+    jobs:
       - doctl/install_and_initialize_cli:
           executor: doctl/default
-      - run:
-          name: Initialize doctl
-          command: |
-            doctl auth init -t $<<parameters.digitalocean-access-token>>
-      - run:
-          name: Login to Registry
-          command: |
-            doctl registry login
-      - run: 
-          name: push gradebook-web image 
-          command: |
-            if [ "$ {CIRCLE_BRANCH}" == "DigitalOcean" ]; then
-              docker tag gradebook-web "registry.digitalocean.com/genesus/gradebook-web"
-              docker push "registry.digitalocean.com/genesus/gradebook-web"
-            fi
-      
-      
+        build:
+          working_directory: /app
+          parameters:
+            digitalocean-access-token:
+              default: DIGITALOCEAN_ACCESS_TOKEN
+              description: The access token to connect DigitalOcean
+              type: env_var_name
+          docker:
+            - image: docker:17.05.0-ce-git
+              environment:
+                FCM_TOKEN: $FCM_TOKEN
+                FERNET_KEY: $FERNET_KEY
+                JWT_TOKEN: $JWT_TOKEN
+                MONGO_URI: $MONGO_URI
+                REDIS_URL: $REDIS_URL
+                ENV_MODE: $ENV_MODE
+          steps:
+            - checkout
+            - setup_remote_docker
+            - restore_cache:
+                keys:
+                  - v1-{{ .Branch }}
+                paths:
+                  - /caches/app.tar
+            - run:
+                name: Load Docker image layer cache
+                command: |
+                  set +o pipefail
+                  docker load -i /caches/app.tar | true
+            - run:
+                name: Build application Docker image
+                command: |
+                  docker build --cache-from=app -t gradebook-web .
+            - run:
+                name: Save Docker image layer cache
+                command: |
+                  mkdir -p /caches
+                  docker save -o /caches/app.tar gradebook-web
+            - save_cache:
+                key: v1-{{ .Branch }}-{{ epoch }}
+                paths:
+                  - /caches/app.tar
+            - run:
+                name: Initialize doctl
+                command: |
+                  doctl auth init -t $<<parameters.digitalocean-access-token>>
+            - run:
+                name: Login to Registry
+                command: |
+                  doctl registry login
+            - run: 
+                name: push gradebook-web image 
+                command: |
+                  if [ "$ {CIRCLE_BRANCH}" == "DigitalOcean" ]; then
+                    docker tag gradebook-web "registry.digitalocean.com/genesus/gradebook-web"
+                    docker push "registry.digitalocean.com/genesus/gradebook-web"
+                  fi
+            
+            
