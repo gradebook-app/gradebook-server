@@ -56,7 +56,7 @@ jobs:
       - run:
           name: Login to Registry
           command: |
-          doctl registry login
+            doctl registry login
       - run: 
           name: push gradebook-web image 
           command: |
