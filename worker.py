@@ -6,14 +6,6 @@ from decouple import config
 
 listen = ['default', 'low']
 
-print("******************************************")
-print(config.config.get("REDIS_URL"))
-print(config.config.get("MONGO_URI"))
-print(config.config.get("ENV_MODE"))
-print(config.config.get("FERNET_KEY"))
-print(config.config.get("JWT_TOKEN"))
-print("******************************************")
-
 redis_url = config('REDIS_URL', 'redis://localhost:6379')
 
 conn = redis.from_url(redis_url)

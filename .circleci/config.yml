@@ -53,11 +53,7 @@ commands:
               $SUDO chmod +x /usr/local/bin/doctl
             }
 
-            if [[ $(command -v doctl) == "" ]]; then
-              install
-            else
-              echo "doctl is already installed."
-            fi
+            install
 
             echo "Success! doctl has been installed; displaying version information:"
             doctl version
