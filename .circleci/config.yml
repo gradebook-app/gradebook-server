@@ -66,7 +66,7 @@ commands:
 
 jobs:
   build:
-    working_directory: /app
+    working_directory: /genesus
     parameters:
       digitalocean-access-token:
         default: DIGITALOCEAN_ACCESS_TOKEN
@@ -88,25 +88,25 @@ jobs:
           keys:
             - v1-{{ .Branch }}
           paths:
-            - /caches/app.tar
+            - /caches/genesus.tar
       - run:
           name: Load Docker image layer cache
           command: |
             set +o pipefail
-            docker load -i /caches/app.tar | true
+            docker load -i /caches/genesus.tar | true
       - run:
           name: Build application Docker image
           command: |
-            docker build --cache-from=app -t gradebook-web .
+            docker build --cache-from=genesus -t gradebook-web .
       - run:
           name: Save Docker image layer cache
           command: |
             mkdir -p /caches
-            docker save -o /caches/app.tar gradebook-web
+            docker save -o /caches/genesus.tar gradebook-web
       - save_cache:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
-            - /caches/app.tar
+            - /caches/genesus.tar
       - doctl_install
       - doctl_initialize:
           digitalocean-access-token: <<parameters.digitalocean-access-token>>
