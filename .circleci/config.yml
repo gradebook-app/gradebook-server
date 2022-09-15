@@ -27,7 +27,8 @@ commands:
             cat /etc/os-release
       - run: 
           command: |
-            echo 'http://dl-cdn.alpinelinux.org/alpine/v3.16/community' >> /etc/apk/repositories
+            rm /etc/alpine-release
+            apk upgrade --no-self-upgrade --available --simulate
       - run: 
           command: |
             apk update
