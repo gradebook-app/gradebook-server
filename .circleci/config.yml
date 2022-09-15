@@ -24,7 +24,7 @@ commands:
     steps:
       - run: 
           command: |
-            yum install sudo
+            ls
       - run: 
           command: |
             if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
