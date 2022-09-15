@@ -1,6 +1,5 @@
 version: 2.1
-orbs:
-  orb-tools: circleci/orb-tools@8.26.0
+
 commands:
   doctl_initialize:
     description: Initilize the digitalocean CLI
@@ -24,57 +23,45 @@ commands:
     steps:
       - run:
           command: |
-            # Set sudo to work whether logged in as root user or non-root user
-            if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
+            install () {
+              echo "Installing Doctl"
+              # Set sudo to work whether logged in as root user or non-root user
+              if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
 
-            $SUDO rm -rf /var/lib/apt/lists/*
+              $SUDO rm -rf /var/lib/apt/lists/*
 
-            if [[ $(command -v curl) == "" ]]; then
-              $SUDO apt-get update && \
-                $SUDO apt-get -y install curl
+              if [[ $(command -v curl) == "" ]]; then
+                $SUDO apt-get update && \
+                  $SUDO apt-get -y install curl
+              fi
+
+              if [[ $(command -v jq) == "" ]]; then
+                $SUDO apt-get update && \
+                  $SUDO apt-get -y install jq
+              fi
+
+              # Get latest download link
+              export LATEST_DOWNLOAD_LINK=$(curl --silent \
+                "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
+                  jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
+
+              # Downlaod latest package
+              curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
+
+              # Install
+              $SUDO mv /tmp/doctl /usr/local/bin
+              $SUDO chmod +x /usr/local/bin/doctl
+            }
+
+            if [[ $(command -v doctl) == "" ]]; then
+              install
+            else
+              echo "doctl is already installed."
             fi
-
-            if [[ $(command -v jq) == "" ]]; then
-              $SUDO apt-get update && \
-                $SUDO apt-get -y install jq
-            fi
-
-            # Get latest download link
-            export LATEST_DOWNLOAD_LINK=$(curl --silent \
-              "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
-                jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
-
-            # Downlaod latest package
-            curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
-
-            # Install
-            $SUDO mv /tmp/doctl /usr/local/bin
-            $SUDO chmod +x /usr/local/bin/doctl
 
             echo "Success! doctl has been installed; displaying version information:"
             doctl version
           name: Install latest doctl version, if not available
-
-executors:
-  default:
-    description: |
-      A debian based docker container to use when running the doctl
-    docker:
-      - image: circleci/golang:<<parameters.golang-version>>-<<parameters.debian-release>>
-    parameters:
-      debian-release:
-        default: stretch
-        description: |
-          Which Debian release?
-        enum:
-          - stretch
-          - jessie
-        type: enum
-      golang-version:
-        default: "1.11"
-        description: |
-          What version of Python? For full options, see https://hub.docker.com/r/circleci/python/tags
-        type: string
 
 jobs:
   build:
@@ -85,7 +72,7 @@ jobs:
         description: The access token to connect DigitalOcean
         type: env_var_name
     docker:
-      - image: docker:17.05.0-ce-git
+      - image: cimg/base:2021.04
         environment:
           FCM_TOKEN: $FCM_TOKEN
           FERNET_KEY: $FERNET_KEY
