@@ -72,7 +72,7 @@ jobs:
         default: DIGITALOCEAN_ACCESS_TOKEN
         description: The access token to connect DigitalOcean
         type: env_var_name
-    docker:
+    machine:
       - image: ubuntu-2204:2022.07.1
         environment:
           FCM_TOKEN: $FCM_TOKEN
