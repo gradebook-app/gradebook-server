@@ -26,7 +26,6 @@ commands:
             apk update
             apk upgrade --available
             apk --no-cache add doctl
-            doctl version
       - run: 
           command: |
             doctl version     
@@ -87,10 +86,8 @@ jobs:
       - run: 
           name: push gradebook-web image 
           command: |
-            if [ "$ {CIRCLE_BRANCH}" == "DigitalOcean" ]; then
-              docker tag gradebook-web "registry.digitalocean.com/genesus/gradebook-web"
-              docker push "registry.digitalocean.com/genesus/gradebook-web"
-            fi
+            docker tag gradebook-web "registry.digitalocean.com/genesus/gradebook-web"
+            docker push "registry.digitalocean.com/genesus/gradebook-web"
       
       
 workflows:
