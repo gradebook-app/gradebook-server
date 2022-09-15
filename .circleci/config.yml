@@ -1,6 +1,5 @@
 version: 2.1
-orbs:
-  orb-tools: circleci/orb-tools@8.26.0
+
 commands:
   doctl_initialize:
     description: Initilize the digitalocean CLI
@@ -25,7 +24,6 @@ commands:
       - run:
           command: |
             install () {
-              echo "Installing Doctl"
               # Set sudo to work whether logged in as root user or non-root user
               if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
 
@@ -72,10 +70,18 @@ jobs:
         default: DIGITALOCEAN_ACCESS_TOKEN
         description: The access token to connect DigitalOcean
         type: env_var_name
-    machine:
-      image: ubuntu-2204:2022.07.1
+    docker:
+      - image: docker:19.03.0-ce-git
+        environment:
+          FCM_TOKEN: $FCM_TOKEN
+          FERNET_KEY: $FERNET_KEY
+          JWT_TOKEN: $JWT_TOKEN
+          MONGO_URI: $MONGO_URI
+          REDIS_URL: $REDIS_URL
+          ENV_MODE: $ENV_MODE
     steps:
       - checkout
+      - setup_remote_docker
       - restore_cache:
           keys:
             - v1-{{ .Branch }}
