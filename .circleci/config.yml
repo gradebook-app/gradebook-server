@@ -23,82 +23,41 @@ commands:
     description: Install the doctl, if not available
     steps:
       - run: 
-        command: |
-          if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
+          command: |
+            if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
       - run: 
-        command: |
-            $SUDO rm -rf /var/lib/apt/lists/*
+          command: |
+              $SUDO rm -rf /var/lib/apt/lists/*
       - run: 
-        command: |
-          if [[ $(command -v curl) == "" ]]; then
+          command: |
+            if [[ $(command -v curl) == "" ]]; then
+                $SUDO apt-get update && \
+                $SUDO apt-get -y install curl
+            fi
+      - run: 
+          command: |
+            if [[ $(command -v jq) == "" ]]; then
               $SUDO apt-get update && \
-              $SUDO apt-get -y install curl
-          fi
+              $SUDO apt-get -y install jq
+            fi
       - run: 
-        command: |
-          if [[ $(command -v jq) == "" ]]; then
-            $SUDO apt-get update && \
-            $SUDO apt-get -y install jq
-          fi
+          command: |
+            # Get latest download link
+            export LATEST_DOWNLOAD_LINK=$(curl --silent \
+              "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
+              jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
       - run: 
-        command: |
-          # Get latest download link
-          export LATEST_DOWNLOAD_LINK=$(curl --silent \
-            "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
-            jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
+          command: |
+            # Downlaod latest package
+            curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
       - run: 
-        command: |
-          # Downlaod latest package
-          curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
+          command: |
+              # Install
+              $SUDO mv /tmp/doctl /usr/local/bin
+              $SUDO chmod +x /usr/local/bin/doctl
       - run: 
-        command: |
-            # Install
-            $SUDO mv /tmp/doctl /usr/local/bin
-            $SUDO chmod +x /usr/local/bin/doctl
-      - run: 
-        command: |
-          doctl version
-      # - run:
-      #     command: |
-      #       install () {
-      #         # Set sudo to work whether logged in as root user or non-root user
-      #         if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
-
-      #         $SUDO rm -rf /var/lib/apt/lists/*
-
-      #         if [[ $(command -v curl) == "" ]]; then
-      #           $SUDO apt-get update && \
-      #             $SUDO apt-get -y install curl
-      #         fi
-
-      #         if [[ $(command -v jq) == "" ]]; then
-      #           $SUDO apt-get update && \
-      #             $SUDO apt-get -y install jq
-      #         fi
-
-      #         # Get latest download link
-      #         export LATEST_DOWNLOAD_LINK=$(curl --silent \
-      #           "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
-      #             jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
-
-      #         # Downlaod latest package
-      #         curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
-
-      #         # Install
-      #         $SUDO mv /tmp/doctl /usr/local/bin
-      #         $SUDO chmod +x /usr/local/bin/doctl
-      #       }
-
-      #       if [[ $(command -v doctl) == "" ]]; then
-      #         install
-      #       else
-      #         echo "doctl is already installed."
-      #       fi
-
-      #       echo "Success! doctl has been installed; displaying version information:"
-      #       doctl version
-      #     name: Install latest doctl version, if not available
-
+          command: |
+            doctl version     
 jobs:
   build:
     working_directory: /app
