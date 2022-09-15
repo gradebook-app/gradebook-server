@@ -73,7 +73,7 @@ jobs:
         description: The access token to connect DigitalOcean
         type: env_var_name
     docker:
-      - image: cimg/base:2021.04
+      - image: cimg/base:2022.09
         environment:
           FCM_TOKEN: $FCM_TOKEN
           FERNET_KEY: $FERNET_KEY
