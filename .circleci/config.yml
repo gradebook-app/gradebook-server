@@ -1,5 +1,6 @@
 version: 2.1
-
+orbs:
+  orb-tools: circleci/orb-tools@8.26.0
 commands:
   doctl_initialize:
     description: Initilize the digitalocean CLI
