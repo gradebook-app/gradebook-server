@@ -27,10 +27,6 @@ commands:
             cat /etc/os-release
       - run: 
           command: |
-            rm /etc/alpine-release
-            apk upgrade --no-self-upgrade --available --simulate
-      - run: 
-          command: |
             apk update
             apk upgrade --available
             apk --no-cache add doctl
@@ -47,7 +43,7 @@ jobs:
         description: The access token to connect DigitalOcean
         type: env_var_name
     docker:
-      - image: docker:18.03.1-ce-git
+      - image: docker:17.05.0-ce-git
         environment:
           FCM_TOKEN: $FCM_TOKEN
           FERNET_KEY: $FERNET_KEY
