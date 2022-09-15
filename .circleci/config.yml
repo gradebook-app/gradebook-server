@@ -30,8 +30,8 @@ commands:
               $SUDO rm -rf /var/lib/apt/lists/*
       - run: 
           command: |
-            $SUDO apt-get update && \
-            $SUDO apt-get -y install curl
+            sudo apt-get update && \
+            sudo apt-get -y install curl
       - run: 
           command: |
             if [[ $(command -v jq) == "" ]]; then
