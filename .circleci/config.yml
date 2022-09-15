@@ -11,10 +11,6 @@ commands:
           Name of environment variable storing the digitalocean v2 api access token
         type: env_var_name
     steps:
-      - orb-tools/check-env-var-param:
-          command-name: Checking whether required env vars are set to initialize doctl
-            CLI...
-          param: <<parameters.digitalocean-access-token>>
       - run:
           command: |
             doctl auth init -t $<<parameters.digitalocean-access-token>>
