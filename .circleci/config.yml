@@ -22,8 +22,9 @@ commands:
   doctl_install:
     description: Install the doctl, if not available
     steps:
-      - run: apt-get install -y sudo # https://discuss.circleci.com/t/sudo-command-not-found/14208/4
-      - run: ls -al /bin/sh && sudo rm /bin/sh && sudo ln -s /bin/bash /bin/sh && ls -al /bin/sh
+      - run: 
+          command: |
+            yum install sudo
       - run: 
           command: |
             if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
@@ -32,14 +33,10 @@ commands:
               $SUDO rm -rf /var/lib/apt/lists/*
       - run: 
           command: |
-            sudo apt-get update && \
-            sudo apt-get -y install curl
+            sudo dnf install curl
       - run: 
           command: |
-            if [[ $(command -v jq) == "" ]]; then
-              $SUDO apt-get update && \
-              $SUDO apt-get -y install jq
-            fi
+            sudo dnf install jq
       - run: 
           command: |
             # Get latest download link
