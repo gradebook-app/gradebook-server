@@ -24,32 +24,16 @@ commands:
     steps:
       - run: 
           command: |
-            ls
-      - run: 
-          command: |
             cat /etc/os-release
       - run: 
           command: |
-            if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
-      - run: 
-          command: |
-              $SUDO rm -rf /var/lib/apt/lists/*
-      - run: 
-          command: |
-            dnf install curl
-      - run: 
-          command: |
-            dnf install jq
-      - run: 
-          command: |
-            # Get latest download link
-            export LATEST_DOWNLOAD_LINK=$(curl --silent \
-              "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
-              jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
+            apk update
+            apk fetch curl
+            apk add ./curl-7.61.1-r1.apk
       - run: 
           command: |
             # Downlaod latest package
-            curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
+            curl -sL https://github.com/digitalocean/doctl/releases/download/v1.79.0/doctl-1.79.0-checksums.sha256 | tar -xzv -C /tmp
       - run: 
           command: |
               # Install
