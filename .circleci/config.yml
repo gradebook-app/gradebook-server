@@ -24,36 +24,32 @@ commands:
     steps:
       - run:
           command: |
-            install () {
-              # Set sudo to work whether logged in as root user or non-root user
-              if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
+            # Set sudo to work whether logged in as root user or non-root user
+            if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
 
-              $SUDO rm -rf /var/lib/apt/lists/*
+            $SUDO rm -rf /var/lib/apt/lists/*
 
-              if [[ $(command -v curl) == "" ]]; then
-                $SUDO apt-get update && \
-                  $SUDO apt-get -y install curl
-              fi
+            if [[ $(command -v curl) == "" ]]; then
+              $SUDO apt-get update && \
+                $SUDO apt-get -y install curl
+            fi
 
-              if [[ $(command -v jq) == "" ]]; then
-                $SUDO apt-get update && \
-                  $SUDO apt-get -y install jq
-              fi
+            if [[ $(command -v jq) == "" ]]; then
+              $SUDO apt-get update && \
+                $SUDO apt-get -y install jq
+            fi
 
-              # Get latest download link
-              export LATEST_DOWNLOAD_LINK=$(curl --silent \
-                "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
-                  jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
+            # Get latest download link
+            export LATEST_DOWNLOAD_LINK=$(curl --silent \
+              "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
+                jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
 
-              # Downlaod latest package
-              curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
+            # Downlaod latest package
+            curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
 
-              # Install
-              $SUDO mv /tmp/doctl /usr/local/bin
-              $SUDO chmod +x /usr/local/bin/doctl
-            }
-
-            install
+            # Install
+            $SUDO mv /tmp/doctl /usr/local/bin
+            $SUDO chmod +x /usr/local/bin/doctl
 
             echo "Success! doctl has been installed; displaying version information:"
             doctl version
