@@ -27,6 +27,9 @@ commands:
             cat /etc/os-release
       - run: 
           command: |
+            echo 'https://dl-cdn.alpinelinux.org/alpine/latest-stable/main/' >> /etc/apk/repositories
+      - run: 
+          command: |
             apk update
             apk --no-cache add doctl
             doctl version
