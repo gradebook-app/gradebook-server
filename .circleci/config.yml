@@ -1,7 +1,7 @@
 version: 2.1
 
 commands:
-  doctl/initialize:
+  doctl_initialize:
     description: Initilize the digitalocean CLI
     parameters:
       digitalocean-access-token:
@@ -18,7 +18,7 @@ commands:
           command: |
             doctl auth init -t $<<parameters.digitalocean-access-token>>
           name: Initialize doctl
-  doctl/install:
+  doctl_install:
     description: Install the doctl, if not available
     steps:
       - run:
@@ -85,7 +85,6 @@ executors:
 
 jobs:
   build:
-    executor: doctl/default
     working_directory: /app
     parameters:
       digitalocean-access-token:
@@ -127,8 +126,8 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
-      - doctl/install
-      - doctl/initialize:
+      - doctl_install
+      - doctl_initialize:
           digitalocean-access-token: <<parameters.digitalocean-access-token>>
       - run:
           name: Initialize doctl
