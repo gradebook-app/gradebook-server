@@ -1,6 +1,88 @@
 version: 2.1
-orbs:
-  doctl: digitalocean/cli@0.1.0
+
+commands:
+  doctl/initialize:
+    description: Initilize the digitalocean CLI
+    parameters:
+      digitalocean-access-token:
+        default: DIGITALOCEAN_ACCESS_TOKEN
+        description: |
+          Name of environment variable storing the digitalocean v2 api access token
+        type: env_var_name
+    steps:
+      - orb-tools/check-env-var-param:
+          command-name: Checking whether required env vars are set to initialize doctl
+            CLI...
+          param: <<parameters.digitalocean-access-token>>
+      - run:
+          command: |
+            doctl auth init -t $<<parameters.digitalocean-access-token>>
+          name: Initialize doctl
+  doctl/install:
+    description: Install the doctl, if not available
+    steps:
+      - run:
+          command: |
+            install () {
+              # Set sudo to work whether logged in as root user or non-root user
+              if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
+
+              $SUDO rm -rf /var/lib/apt/lists/*
+
+              if [[ $(command -v curl) == "" ]]; then
+                $SUDO apt-get update && \
+                  $SUDO apt-get -y install curl
+              fi
+
+              if [[ $(command -v jq) == "" ]]; then
+                $SUDO apt-get update && \
+                  $SUDO apt-get -y install jq
+              fi
+
+              # Get latest download link
+              export LATEST_DOWNLOAD_LINK=$(curl --silent \
+                "https://api.github.com/repos/digitalocean/doctl/releases/latest" | \
+                  jq -r '.assets[] | select(.name|test(".*-linux-amd64.tar.gz")).browser_download_url')
+
+              # Downlaod latest package
+              curl -sL $LATEST_DOWNLOAD_LINK | tar -xzv -C /tmp
+
+              # Install
+              $SUDO mv /tmp/doctl /usr/local/bin
+              $SUDO chmod +x /usr/local/bin/doctl
+            }
+
+            if [[ $(command -v doctl) == "" ]]; then
+              install
+            else
+              echo "doctl is already installed."
+            fi
+
+            echo "Success! doctl has been installed; displaying version information:"
+            doctl version
+          name: Install latest doctl version, if not available
+
+executors:
+  default:
+    description: |
+      A debian based docker container to use when running the doctl
+    docker:
+      - image: circleci/golang:<<parameters.golang-version>>-<<parameters.debian-release>>
+    parameters:
+      debian-release:
+        default: stretch
+        description: |
+          Which Debian release?
+        enum:
+          - stretch
+          - jessie
+        type: enum
+      golang-version:
+        default: "1.11"
+        description: |
+          What version of Python? For full options, see https://hub.docker.com/r/circleci/python/tags
+        type: string
+
 jobs:
   build:
     executor: doctl/default
@@ -21,8 +103,6 @@ jobs:
           ENV_MODE: $ENV_MODE
     steps:
       - checkout
-      - doctl/install_and_initialize_cli:
-          name: Install Doctl
       - setup_remote_docker
       - restore_cache:
           keys:
@@ -47,6 +127,9 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
+      - doctl/install
+      - doctl/initialize:
+          digitalocean-access-token: <<parameters.digitalocean-access-token>>
       - run:
           name: Initialize doctl
           command: |
@@ -65,7 +148,7 @@ jobs:
       
       
 workflows:
-  doctl:
+  build_and_deploy:
     jobs:
       - build
         
