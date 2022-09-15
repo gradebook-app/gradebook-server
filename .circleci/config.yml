@@ -22,6 +22,8 @@ commands:
   doctl_install:
     description: Install the doctl, if not available
     steps:
+      - run: apt-get install -y sudo # https://discuss.circleci.com/t/sudo-command-not-found/14208/4
+      - run: ls -al /bin/sh && sudo rm /bin/sh && sudo ln -s /bin/bash /bin/sh && ls -al /bin/sh
       - run: 
           command: |
             if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
