@@ -76,7 +76,6 @@ jobs:
       image: ubuntu-2204:2022.07.1
     steps:
       - checkout
-      - setup_remote_docker
       - restore_cache:
           keys:
             - v1-{{ .Branch }}
