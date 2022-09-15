@@ -28,8 +28,8 @@ commands:
       - run: 
           command: |
             apk update
-            apk fetch curl
-            apk add ./curl-7.61.1-r1.apk
+            apk --no-cache add curl
+            curl --version
       - run: 
           command: |
             # Downlaod latest package
