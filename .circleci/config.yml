@@ -30,10 +30,8 @@ commands:
               $SUDO rm -rf /var/lib/apt/lists/*
       - run: 
           command: |
-            if [[ $(command -v curl) == "" ]]; then
-                $SUDO apt-get update && \
-                $SUDO apt-get -y install curl
-            fi
+            $SUDO apt-get update && \
+            $SUDO apt-get -y install curl
       - run: 
           command: |
             if [[ $(command -v jq) == "" ]]; then
@@ -78,6 +76,9 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
+      - doctl_install
+      - doctl_initialize:
+          digitalocean-access-token: <<parameters.digitalocean-access-token>>
       - restore_cache:
           keys:
             - v1-{{ .Branch }}
@@ -101,9 +102,6 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
-      - doctl_install
-      - doctl_initialize:
-          digitalocean-access-token: <<parameters.digitalocean-access-token>>
       - run:
           name: Initialize doctl
           command: |
