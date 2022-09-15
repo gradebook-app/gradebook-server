@@ -28,17 +28,8 @@ commands:
       - run: 
           command: |
             apk update
-            apk --no-cache add curl
-            curl --version
-      - run: 
-          command: |
-            # Downlaod latest package
-            curl -sL https://github.com/digitalocean/doctl/releases/download/v1.79.0/doctl-1.79.0-checksums.sha256 | tar -xzv -C /tmp
-      - run: 
-          command: |
-              # Install
-              $SUDO mv /tmp/doctl /usr/local/bin
-              $SUDO chmod +x /usr/local/bin/doctl
+            apk --no-cache add doctl
+            doctl version
       - run: 
           command: |
             doctl version     
