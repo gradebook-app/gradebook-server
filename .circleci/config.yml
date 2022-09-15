@@ -43,7 +43,7 @@ jobs:
         description: The access token to connect DigitalOcean
         type: env_var_name
     docker:
-      - image: docker:19.03.15-git
+      - image: docker:20.10.18-git
         environment:
           FCM_TOKEN: $FCM_TOKEN
           FERNET_KEY: $FERNET_KEY
