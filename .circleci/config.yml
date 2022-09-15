@@ -27,16 +27,19 @@ commands:
             ls
       - run: 
           command: |
+            cat /etc/os-release
+      - run: 
+          command: |
             if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
       - run: 
           command: |
               $SUDO rm -rf /var/lib/apt/lists/*
       - run: 
           command: |
-            sudo dnf install curl
+            dnf install curl
       - run: 
           command: |
-            sudo dnf install jq
+            dnf install jq
       - run: 
           command: |
             # Get latest download link
