@@ -80,9 +80,17 @@ class GenesisService:
         studentId = genesisId['studentId']
      
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={studentId}&mpToView={markingPeriod}"
-    
+
         cookies = { 'JSESSIONID': genesisId['token'] }
-        response = requests.get(url, cookies=cookies)
+        response = requests.get(url, cookies=cookies, headers=global_headers)
+
+        if not response.text:
+            return {
+                "courses": None, 
+                "markingPeriods": None,
+                "currentMarkingPeriod": None,
+            }
+
         if not self.access_granted(response.text): return Response(
             "Session Expired",
             401,
@@ -174,7 +182,7 @@ class GenesisService:
         cookies = { 'JSESSIONID': genesisId['token'] }
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session: 
-            _, text = await self.fetch(session, method="GET", url=url, cookies=cookies) 
+            _, text = await self.fetch(session, method="GET", url=url, cookies=cookies, headers=global_headers) 
    
             if not self.access_granted(text): return Response(
                 "Session Expired",
