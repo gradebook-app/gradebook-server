@@ -12,6 +12,11 @@ conn = redis.from_url(redis_url)
 queue = Queue(connection=conn, )
 scheduler = Scheduler(queue=queue, connection=conn)
 
+def black_hole(job, *_exc_info):
+    print("Job Cancelled due to exception: ", job.id)
+    job.cancel()
+    return False
+
 def exception_handler(): 
     print("exception")
 
@@ -19,7 +24,8 @@ def bootstrap():
     print("Redis Connection URI: ", redis_url)
     try: 
         with Connection(conn):
-            worker = Worker(map(Queue, listen))
+            worker = Worker(map(Queue, listen), exception_handlers=[ black_hole ], disable_default_exception_handler=True)
+            print(f"Working @ {worker.pid}")
             worker.work()
 
     except redis.exceptions.ConnectionError as _: 

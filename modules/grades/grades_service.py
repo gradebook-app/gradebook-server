@@ -1,4 +1,5 @@
 import os
+import traceback
 from flask import Response
 from worker import conn
 from mongo_config import connect_db
@@ -51,39 +52,52 @@ class GradesService:
         })
 
     def query_live_gpa(self, genesisId): 
-        response = self.query_user_grade(genesisId)
+        try:
+            response = self.query_user_grade(genesisId)
 
-        if isinstance(response, Response):
-            return response
+            if isinstance(response, Response):
+                return response
 
-        gpa = self.caculate_gpa(response)
+            gpa = self.caculate_gpa(response)
 
-        user = { "_id": genesisId["userId"] }
-        unweighted = gpa["unweightedGPA"]
-        weighted = gpa["weightedGPA"]
-        low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
+            user = { "_id": genesisId["userId"] }
+            unweighted = gpa["unweightedGPA"]
+            weighted = gpa["weightedGPA"]
+            low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
+        
+            del unweighted; del weighted; del response; 
 
-        return gpa
+            return gpa
+        except Exception as e:
+            traceback.format_exception_only(e)
+            return {
+                "unweightedGPA": None,
+                "weightedGPA": None
+            }
 
     def query_past_grades(self, genesisId):
-        response = self.genesisService.query_past_grades(genesisId)
-        if isinstance(response, Response):
-            return response
+        try:
+            response = self.genesisService.query_past_grades(genesisId)
+            if isinstance(response, Response):
+                return response
 
 
-        courses = response[0]
-        weights = response[1]
-        gpas = []
+            courses = response[0]
+            weights = response[1]
+            gpas = []
 
-        for key in courses.keys(): 
-            gradeCourses = courses[key]
-            gradeWeights = weights[key]
-            calculated_gpa = self.caculate_gpa([ None, gradeCourses, gradeWeights ])
-            gpas.append({
-                **calculated_gpa, "gradeLevel": key, "year": courses[key][0]["year"],
-            })
+            for key in courses.keys(): 
+                gradeCourses = courses[key]
+                gradeWeights = weights[key]
+                calculated_gpa = self.caculate_gpa([ None, gradeCourses, gradeWeights ])
+                gpas.append({
+                    **calculated_gpa, "gradeLevel": key, "year": courses[key][0]["year"],
+                })
 
-        return { "pastGradePointAverages": gpas }
+            return { "pastGradePointAverages": gpas }
+        except Exception as e:
+            traceback.format_exception_only(e)
+            return { "pastGradePointAverages": [] }
 
     def caculate_gpa(self, response): 
         courses_raw = response[1]
@@ -339,6 +353,8 @@ class GradesService:
                 all_mp_grades.append(mp_grades)
                 all_mp_coures.append(mp_grades["courses"])
         
+        del grades; del mps; 
+
         return ( all_mp_grades, all_mp_coures, course_weights )
 
     def query_and_save_grades(self, genesisId, user):
@@ -357,6 +373,8 @@ class GradesService:
 
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
             default_queue.enqueue(f=self.send_gpa_update, args=(user, gpa))
+        
+        del user
 
     def save_persist_time(self, persist_time):
         user_repository = UserRepository(db=connect_db())
@@ -368,10 +386,8 @@ class GradesService:
                     "lastPersistTimestamp": persist_time,
                 }}
             )
-        except Exception: pass
-        finally: 
-            pass
-            # scheduler.enqueue_in(time_delta=timedelta(minutes=5), func=self.query_grades, skip=0)
+        except Exception as e: 
+            traceback.format_exception_only(e)
 
     def clean_assignments(self, userId, assignments): 
         assignment_repository = AssignmentRepository(db=connect_db())
@@ -385,6 +401,8 @@ class GradesService:
             "userId": userId,
             "_id": { "$in": ids },
         })
+
+        del assignments
     
     def store_assignments(self, user, assignments, send_notifications):
         assignment_repository = AssignmentRepository(db=connect_db())
@@ -411,9 +429,11 @@ class GradesService:
             token = user['notificationToken']
             if not token or token is None or not send_notifications: return 
             for assignment_notificatinon in docs[:3]:
-                default_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon))
+                default_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon), description='send notification')
         except Exception: 
             pass
+        finally: 
+            del assignments
 
     def find_assignments(self, all_assignments, assignments):
         docs = []
@@ -477,19 +497,21 @@ class GradesService:
             removed_assignments = set(serialized_stored_assignments) - set(serialized_new_assignments)
             if len(new_assignments):
                 new_assignments = self.find_assignments(response, list(new_assignments))
-                default_queue.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification))
-                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+                default_queue.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification), description='store assignments')
+                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades')
             elif not len(new_assignments) and not len(user['grades']):
-                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades')
 
             if len(removed_assignments): 
                 removed_assignments = self.find_assignments(assignments, list(removed_assignments))
-                default_queue.enqueue_call(func=self.clean_assignments, args=(user['_id'], removed_assignments, ))
+                default_queue.enqueue_call(func=self.clean_assignments, args=(user['_id'], removed_assignments, ), description='clean assignments')
         else: 
             send_notification = False
-            default_queue.enqueue_call(func=self.store_assignments, args=(user, response, send_notification))
+            default_queue.enqueue_call(func=self.store_assignments, args=(user, response, send_notification), description='store assignments')
         if not len(assignments) and not len(user['grades']):
-            default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user))
+            default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades')
+
+        del assignments; del serialized_new_assignments; del serialized_stored_assignments
 
     def query_grades(self, skip): 
         user_repository = UserRepository(db=connect_db())
@@ -517,11 +539,13 @@ class GradesService:
                 f"{skip}-{limit + skip if limit >= len(docs) else skip + len(docs)}: ", 
                 endTime - startTime
             )
-        except Exception: pass
+        except Exception as e: 
+            traceback.format_exception_only(e)
         finally: 
             if returned_total == 0 or returned_total is None: 
-                default_queue.enqueue_call(func=self.save_persist_time, args=(persist_time, ))
+                default_queue.enqueue_call(func=self.save_persist_time, args=(persist_time, ), description='persist time')
                 next_skip = 0
 
             if next_skip != 0: 
-                default_queue.enqueue_call(func=self.query_grades, args=(next_skip,))
+                del response
+                default_queue.enqueue_call(func=self.query_grades, args=(next_skip,), description='query grades')
