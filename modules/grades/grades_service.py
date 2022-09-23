@@ -1,3 +1,4 @@
+import os
 from flask import Response
 from worker import conn
 from mongo_config import connect_db
@@ -126,35 +127,51 @@ class GradesService:
         gpa_unweighted_total = gpa_weighted_total = excluded_courses = course_points = 0
         course_loop = courses if single_mp else course_averages
 
-        for course in course_loop: 
-            percentage = course['grade']['percentage']
-            percentage = round(float(percentage)) if percentage else percentage
+        course_weights_path = os.path.join(os.getcwd(), "constants/course-weights.json")
+        with open(course_weights_path) as f: 
+            course_weights = json.load(f)
 
-            if percentage and percentage != 0: 
-                name = course["name"]
+            ap_weights = set(course_weights['ap'])
+            honors_weights = set(course_weights['honors'])
+            ommitted_weights = set(course_weights['omit'])
 
-                for weight in weights: 
-                    if weight['name'] == name: 
-                        course_points += weight['weight'] if weight['weight'] else 0
-                        course_weight = weight['weight'] if weight['weight'] else 1
+            course_loop = [ course for course in course_loop if not ommitted_weights.__contains__(course['name'].lower()) ]
+    
+            for course in course_loop: 
+                percentage = course['grade']['percentage']
+                percentage = round(float(percentage)) if percentage else percentage
 
-                points = gpa_standard_points(percentage)
-                gpa_unweighted_total += (points * course_weight) 
+                if percentage and percentage != 0: 
+                    name = course["name"]
 
-                if name.lower().split().__contains__('honor') or name.lower().split().__contains__('honors'):
-                    weighted_point = gpa_honors_points(percentage)
-                elif name.lower().split().__contains__('ap'):
-                    weighted_point = gpa_ap_points(percentage)
-                else: 
-                    weighted_point = gpa_standard_points(percentage)
-                gpa_weighted_total += (weighted_point * course_weight)
+                    for weight in weights: 
+                        if weight['name'] == name and not ommitted_weights.__contains__(name.lower()): 
+                            course_points += weight['weight'] if weight['weight'] else 0
+                            course_weight = weight['weight'] if weight['weight'] else 1
 
-            else:
-                excluded_courses += 1
-        
-        divisor = course_points if course_points > 0 else (len(course_loop) - excluded_courses)
-        final_gpa_weighted = gpa_weighted_total / divisor
-        final_gpa_unweighted = gpa_unweighted_total / divisor
+                    points = gpa_standard_points(percentage)
+                    gpa_unweighted_total += (points * course_weight)
+
+                    if name.lower().split().__contains__('honor') or name.lower().split().__contains__('honors') or honors_weights.__contains__(name.lower()):
+                        weighted_point = gpa_honors_points(percentage)
+                    elif name.lower().split().__contains__('ap') or ap_weights.__contains__(name.lower()):
+                        weighted_point = gpa_ap_points(percentage)
+                    elif not ommitted_weights.__contains__(name.lower()):
+                        weighted_point = gpa_standard_points(percentage)
+                    else: 
+                        excluded_courses += 1
+
+                    gpa_weighted_total += (weighted_point * course_weight)
+
+                else:
+                    excluded_courses += 1
+            
+            divisor = course_points if course_points > 0 else (len(course_loop) - excluded_courses)
+            
+            final_gpa_weighted = gpa_weighted_total / divisor
+            final_gpa_unweighted = gpa_unweighted_total / divisor
+
+            del ap_weights; del honors_weights; del ommitted_weights; 
 
         return {
             "unweightedGPA": final_gpa_unweighted,
