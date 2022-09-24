@@ -1,3 +1,5 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from worker import conn, scheduler
 from rq import Queue
 from modules.grades.grades_service import GradesService
@@ -13,6 +15,12 @@ def query_grades():
     if len(jobs):
         print("Skipping Persisting, Queue Busy", print(jobs)) 
         return 
+
+    # optimization to reduce memory usage between 1am and 5am by ignoring persisting 
+    hour = datetime.now(ZoneInfo("America/New_York")).hour
+    if (5 >= hour >= 0): 
+        return
+
     grades_service = GradesService()
     default_queue.enqueue_call(func=grades_service.query_grades, args=(0, ))
 
