@@ -1,1 +1,1 @@
-web: gunicorn app:app -w 4 --threads 12
+web: gunicorn --max-requests 500 --max-requests-jitter 100 app:app -w 3 --preload
