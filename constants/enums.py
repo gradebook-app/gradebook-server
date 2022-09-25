@@ -1,5 +1,5 @@
 course_types = {
-    "normal": "normal",
+    "normal": "unweighted",
     "honors": "honors",
     "ap": "ap"
 }
