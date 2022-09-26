@@ -86,13 +86,17 @@ class GradesService:
     def query_live_gpa(self, genesisId): 
         try:
             response = self.query_user_grade(genesisId)
+            userId = genesisId["userId"]
 
             if isinstance(response, Response):
                 return response
 
-            gpa = self.caculate_gpa(response, grades=[])
+            grades_repo = GradesRepository(db=connect_db())
+            grades = list(grades_repo.find_courses_if_weight(ObjectId(userId)))
+            
+            gpa = self.calculate_gpa(response, manual_weights=grades)
 
-            user = { "_id": genesisId["userId"] }
+            user = { "_id": userId }
             unweighted = gpa["unweightedGPA"]
             weighted = gpa["weightedGPA"]
             low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
@@ -113,6 +117,10 @@ class GradesService:
             if isinstance(response, Response):
                 return response
 
+            userId = genesisId["userId"]
+
+            grades_repo = GradesRepository(db=connect_db())
+            grades = list(grades_repo.find_courses_if_weight(ObjectId(userId)))
 
             courses = response[0]
             weights = response[1]
@@ -121,7 +129,7 @@ class GradesService:
             for key in courses.keys(): 
                 gradeCourses = courses[key]
                 gradeWeights = weights[key]
-                calculated_gpa = self.caculate_gpa([ None, gradeCourses, gradeWeights ], grades=[])
+                calculated_gpa = self.calculate_gpa([ None, gradeCourses, gradeWeights ], manual_weights=grades)
                 gpas.append({
                     **calculated_gpa, "gradeLevel": key, "year": courses[key][0]["year"],
                 })
@@ -143,9 +151,12 @@ class GradesService:
 
             return ap_weights, honors_weights, ommitted_weights
 
-    def caculate_gpa(self, response, grades=[]): 
+    def calculate_gpa(self, response, manual_weights=[]): 
         courses_raw = response[1]
         weights = response[2]
+
+        manual_weights = [ course for course in manual_weights if dict(course).get('weight', None) and dict(course).get('name', None)]
+        manual_weights = { course['name'].lower() : course['weight'] for course in manual_weights }
 
         if courses_raw and len(courses_raw) > 0: 
             courses = np.array(courses_raw).flatten()
@@ -197,21 +208,29 @@ class GradesService:
                 name = course["name"]
 
                 for weight in weights: 
-                    if weight['name'] == name and not ommitted_weights.__contains__(name.lower()): 
+                    if weight['name'] == name: 
                         course_points += weight['weight'] if weight['weight'] else 0
                         course_weight = weight['weight'] if weight['weight'] else 1
 
                 points = gpa_standard_points(percentage)
                 gpa_unweighted_total += (points * course_weight)
 
-                if name.lower().split().__contains__('honor') or name.lower().split().__contains__('honors') or honors_weights.__contains__(name.lower()):
-                    weighted_point = gpa_honors_points(percentage)
-                elif name.lower().split().__contains__('ap') or ap_weights.__contains__(name.lower()):
-                    weighted_point = gpa_ap_points(percentage)
-                elif not ommitted_weights.__contains__(name.lower()):
-                    weighted_point = gpa_standard_points(percentage)
+                manually_set_weight = manual_weights.get(name.lower(), None)
+
+                if manually_set_weight is None:
+                    if name.lower().split().__contains__('honor') or name.lower().split().__contains__('honors') or honors_weights.__contains__(name.lower()):
+                        weighted_point = gpa_honors_points(percentage)
+                    elif name.lower().split().__contains__('ap') or ap_weights.__contains__(name.lower()):
+                        weighted_point = gpa_ap_points(percentage)
+                    else:
+                        weighted_point = gpa_standard_points(percentage)
                 else: 
-                    excluded_courses += 1
+                    if manually_set_weight == "ap": 
+                        weighted_point = gpa_ap_points(percentage)
+                    elif manually_set_weight == "honors":
+                        weighted_point = gpa_honors_points(percentage)
+                    elif manually_set_weight == "unweighted": 
+                        weighted_point = gpa_standard_points(percentage)
 
                 gpa_weighted_total += (weighted_point * course_weight)
 
@@ -408,7 +427,7 @@ class GradesService:
         for mp_grades in all_mp_grades:
             self.save_grades(user, mp_grades)
 
-        gpa = self.caculate_gpa(response, grades=user["grades"])
+        gpa = self.calculate_gpa(response, manual_weights=user["grades"])
         unweighted = user["unweightedGPA"]
 
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 

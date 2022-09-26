@@ -22,7 +22,7 @@ Important Note: Run MongoDB Service commands first.
 1. redis-server
 2. rqscheduler
 3. export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES (Run this only if on MacOS)
-4. rq worker
+4. python worker.py
 5. python app.py
 
 # Run MongoDB Service Locally: 

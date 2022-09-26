@@ -19,6 +19,13 @@ class GradesRepository:
         })
         return response
 
+    def find_courses_if_weight(self, userId:ObjectId): 
+        response = self.grades_model.find({
+            "userId": userId,
+            "weight": { "$ne": None }
+        })
+        return response
+
     def update_course_weight(self, courseId, sectionId, weight, userId: ObjectId): 
         response = self.grades_model.find_one_and_update({
             "userId": userId,
