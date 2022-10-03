@@ -353,7 +353,7 @@ class GradesService:
                     assert not current_percent is None and not previous_percent is None
 
                     if not previous_percent == current_percent: 
-                        default_queue.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
+                        low_queue.enqueue(f=self.send_grade_update, args=(user, course, previous_percent, current_percent))
             except AssertionError: pass
 
         self.cleanup_classes(user, grades)
@@ -432,7 +432,7 @@ class GradesService:
         unweighted = user["unweightedGPA"]
 
         if not gpa["unweightedGPA"] == unweighted and not unweighted is None: 
-            default_queue.enqueue(f=self.send_gpa_update, args=(user, gpa))
+            low_queue.enqueue(f=self.send_gpa_update, args=(user, gpa))
         
         del user
 
@@ -489,7 +489,7 @@ class GradesService:
             token = user['notificationToken']
             if not token or token is None or not send_notifications: return 
             for assignment_notificatinon in docs[:3]:
-                default_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon), description='send notification')
+                low_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon), description='send notification')
         except Exception: 
             pass
         finally: 
