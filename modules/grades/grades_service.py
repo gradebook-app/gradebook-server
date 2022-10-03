@@ -240,6 +240,7 @@ class GradesService:
         divisor = course_points if course_points > 0 else (len(course_loop) - excluded_courses)
         
         final_gpa_weighted = gpa_weighted_total / divisor
+
         final_gpa_unweighted = gpa_unweighted_total / divisor
 
         del ap_weights; del honors_weights; del ommitted_weights; 

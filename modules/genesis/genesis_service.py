@@ -283,7 +283,7 @@ class GenesisService:
         html = pq(response.text)
         table = html.find('table.list')
         rows = table.children('tr:not([class="listheading"])')
-
+      
         courses = []
 
         for row in rows: 
