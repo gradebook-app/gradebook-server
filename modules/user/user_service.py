@@ -17,6 +17,10 @@ class UserService:
         )
         return {}
     
+    def is_user_active(self, user:dict) -> bool: 
+        logged_in_at = user.get("loggedInAt", None)
+        if not logged_in_at: return False
+
     def get_user_account(self, genesisId): 
         return self.genesisService.account_details(genesisId)
 

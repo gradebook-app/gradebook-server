@@ -441,7 +441,15 @@ class GradesService:
 
         try: 
             user_repository.update_many(
-                { "status": "active" }, 
+                { 
+                    "status": "active",
+                    "notificationToken": {
+                        "$ne": None
+                    },
+                    "studentId": {
+                        "$ne": None
+                    }
+                }, 
                 { "$set": {
                     "lastPersistTimestamp": persist_time,
                 }}
@@ -550,7 +558,9 @@ class GradesService:
             last_persist_timestamp = 0 
 
         elapsed_time = int(persist_time - last_persist_timestamp)
-        send_notification = elapsed_time < (60 * 60 * 6)
+
+        # send notification if last persist time was within 6 hours of current persist time
+        send_notification = elapsed_time < (60 * 60 * 6) 
 
         if len(assignments): 
             new_assignments = set(serialized_new_assignments) - set(serialized_stored_assignments)
