@@ -10,6 +10,7 @@ from urllib.parse import parse_qs
 from flask import Response
 import aiohttp
 from http.cookies import SimpleCookie
+from modules.genesis.sb_service import SBService
 
 global_headers = { 
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -325,12 +326,18 @@ class GenesisService:
         rows = html.find("td:nth-child(1) > table.list:nth-child(1)").children("tr")
         
         try: 
-            locker = pq(rows[7]).find("td:nth-child(2)").text()
+            if genesisId['schoolDistrict'] == "sbstudents.org":
+                locker = SBService.get_locker_code(rows)
+            else: 
+                locker = pq(rows[7]).find("td:nth-child(2)").text()
         except Exception: 
             locker = None; 
 
         try: 
-            lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
+            if genesisId['schoolDistrict'] == "sbstudents.org":
+                lunchBalance = SBService.get_lunch_balance(rows)
+            else: 
+                lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
         except Exception: 
             lunchBalance = None
 
