@@ -4,7 +4,7 @@ from pyquery import PyQuery as pq
 class SBService: 
     @staticmethod
     def get_lunch_balance(html):
-        locker = pq(html[6]).find("td:nth-child(2)").text()
+        locker = pq(html[7]).find("td:nth-child(2)").text()
         return locker
 
     @staticmethod
