@@ -4,7 +4,7 @@ from rq import Worker, Queue, Connection
 from rq_scheduler import Scheduler
 from decouple import config
 
-listen = ['default', 'low']
+listen = ['default']
 
 redis_url = config('REDIS_URL', 'redis://localhost:6379')
 
