@@ -3,8 +3,17 @@ import redis
 from rq import Worker, Queue, Connection
 from rq_scheduler import Scheduler
 from decouple import config
+import argparse
 
-listen = ['default']
+parser = argparse.ArgumentParser(
+                    prog = 'RQ Worker',
+                    description = 'Python worker for grade persisting',
+        )
+
+parser.add_argument('--types')  
+args = parser.parse_args()
+
+listen = ['default'] if args.types == None else args.types.split(",")
 
 redis_url = config('REDIS_URL', 'redis://localhost:6379')
 
