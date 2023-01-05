@@ -1,3 +1,4 @@
+import sys
 from time import sleep
 import redis
 from rq import Worker, Queue, Connection
@@ -13,7 +14,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--types')  
 args = parser.parse_args()
 
-listen = ['default'] if args.types == None else args.types.split(",")
+listen = ['default'] if args.types == None else args.types.split()
+sys.argv = []
 
 redis_url = config('REDIS_URL', 'redis://localhost:6379')
 
