@@ -198,7 +198,7 @@ class GradesService:
 
         ap_weights, honors_weights, ommitted_weights = self.get_predefined_weights()
 
-        course_loop = [ course for course in course_loop if not ommitted_weights.__contains__(course['name'].lower()) ]
+        course_loop = [ course for course in course_loop if not ommitted_weights.__contains__(course['name'].lower()) and not course['name'][0] == "*" ]
 
         for course in course_loop: 
             percentage = course['grade']['percentage']
