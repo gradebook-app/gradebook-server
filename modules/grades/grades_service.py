@@ -16,7 +16,7 @@ from modules.user.user_repository import UserRepository
 from modules.grades.assignments_repository import AssignmentRepository 
 from modules.grades.grades_repository import GradesRepository 
 from modules.grades.gpa_history_repository import GPAHistoryRepository
-from rq import Queue
+from rq import Queue, Retry
 
 low_queue = Queue('low', connection=conn)
 default_queue = Queue('default', connection=conn)
@@ -497,7 +497,7 @@ class GradesService:
             token = user['notificationToken']
             if not token or token is None or not send_notifications: return 
             for assignment_notificatinon in docs[:3]:
-                low_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon), description='send notification')
+                low_queue.enqueue_call(func=self.send_assignment_update, args=(token, assignment_notificatinon), description='send notification', retry=Retry(max=3, interval=[10, 30, 60]))
         except Exception: 
             pass
         finally: 
@@ -568,9 +568,9 @@ class GradesService:
             if len(new_assignments):
                 new_assignments = self.find_assignments(response, list(new_assignments))
                 default_queue.enqueue_call(func=self.store_assignments, args=(user, new_assignments, send_notification), description='store assignments')
-                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades')
+                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades', failure_ttl=60*60*24*2)
             elif not len(new_assignments) and not len(user['grades']):
-                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades')
+                default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades', failure_ttl=60*60*24*2)
 
             if len(removed_assignments): 
                 removed_assignments = self.find_assignments(assignments, list(removed_assignments))
@@ -579,7 +579,7 @@ class GradesService:
             send_notification = False
             default_queue.enqueue_call(func=self.store_assignments, args=(user, response, send_notification), description='store assignments')
         if not len(assignments) and not len(user['grades']):
-            default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades')
+            default_queue.enqueue_call(func=self.query_and_save_grades, args=(genesisId, user), description='query and save grades', failure_ttl=60*60*24*2)
 
         del assignments; del serialized_new_assignments; del serialized_stored_assignments
 
@@ -618,4 +618,4 @@ class GradesService:
 
             if next_skip != 0: 
                 del response
-                default_queue.enqueue_call(func=self.query_grades, args=(next_skip,), description='query grades')
+                default_queue.enqueue_call(func=self.query_grades, args=(next_skip,), description='query grades', failure_ttl=60*60*24*2)
