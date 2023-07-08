@@ -4,27 +4,30 @@ from worker import conn, scheduler
 from rq import Queue
 from modules.grades.grades_service import GradesService
 
-default_queue = Queue('default', connection=conn)
+default_queue = Queue("default", connection=conn)
+
 
 def clear_queue():
-    for job in scheduler.get_jobs(): 
+    for job in scheduler.get_jobs():
         scheduler.cancel(job)
 
-def query_grades(): 
+
+def query_grades():
     jobs = default_queue.get_jobs()
     if len(jobs):
-        print("Skipping Persisting, Queue Busy", print(jobs)) 
-        return 
+        print("Skipping Persisting, Queue Busy", print(jobs))
+        return
 
-    # optimization to reduce memory usage between 1am and 5am by ignoring persisting 
+    # optimization to reduce memory usage between 1am and 5am by ignoring persisting
     hour = datetime.now(ZoneInfo("America/New_York")).hour
-    if (5 >= hour >= 0): 
+    if 5 >= hour >= 0:
         return
 
     grades_service = GradesService()
-    default_queue.enqueue_call(func=grades_service.query_grades, args=(0, ))
+    default_queue.enqueue_call(func=grades_service.query_grades, args=(0,))
 
-def enqueue_processes(): 
+
+def enqueue_processes():
     scheduler.cron(
         cron_string="*/5 * * * *",
         func=query_grades,
@@ -33,6 +36,7 @@ def enqueue_processes():
         queue_name="default",
         use_local_timezone=False,
     )
+
 
 def schedule_grade_persisting():
     clear_queue()

@@ -4,3 +4,4 @@
 dump.rdb
 __pycache__/
 *.pyc
+.vscode

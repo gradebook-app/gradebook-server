@@ -1,14 +1,10 @@
 def user_aggregation(limit, skip):
     return [
         {
-            "$match": { 
+            "$match": {
                 "status": "active",
-                "notificationToken": {
-                    "$ne": None
-                },
-                "studentId": {
-                    "$ne": None
-                }
+                "notificationToken": {"$ne": None},
+                "studentId": {"$ne": None},
             }
         },
         {

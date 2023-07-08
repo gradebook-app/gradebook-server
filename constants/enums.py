@@ -1,5 +1,1 @@
-course_types = {
-    "normal": "unweighted",
-    "honors": "honors",
-    "ap": "ap"
-}
+course_types = {"normal": "unweighted", "honors": "honors", "ap": "ap"}

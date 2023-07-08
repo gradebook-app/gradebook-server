@@ -1,6 +1,6 @@
 from flask import Flask
-from modules.auth.auth_controller import auth as auth_blueprint 
-from modules.grades.grades_controller import grades as grades_blueprint 
+from modules.auth.auth_controller import auth as auth_blueprint
+from modules.grades.grades_controller import grades as grades_blueprint
 from modules.user.user_controller import user as user_blueprint
 from modules.redis.grades import clear_queue
 from modules.redis.grades import schedule_grade_persisting
@@ -15,10 +15,11 @@ app.register_blueprint(user_blueprint)
 
 schedule_grade_persisting()
 
-@app.route('/', methods=['GET'])
-def home(): 
+
+@app.route("/", methods=["GET"])
+def home():
     return "All Systems Operational."
 
-if __name__ == "__main__": 
-    app.run(port=5000, debug=True)
 
+if __name__ == "__main__":
+    app.run(port=5000, debug=True)

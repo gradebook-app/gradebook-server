@@ -4,13 +4,13 @@ genesis_config = {
         "email_suffix": "sbstudents.org",
         "login": "/sis/view?gohome=true",
         "auth": "/sis/j_security_check",
-        "main": "/parents"
+        "main": "/parents",
     },
     "mtsdstudent.us": {
-        "root":"https://parents.mtsd.k12.nj.us/genesis",
+        "root": "https://parents.mtsd.k12.nj.us/genesis",
         "email_suffix": "mtsdstudent.us",
-        "login":"/sis/view?gohome=true",
-        "auth":"/sis/j_security_check",
-        "main":"/parents"
-    }
+        "login": "/sis/view?gohome=true",
+        "auth": "/sis/j_security_check",
+        "main": "/parents",
+    },
 }

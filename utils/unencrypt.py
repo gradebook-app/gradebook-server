@@ -2,7 +2,7 @@ import sys
 from cryptography.fernet import Fernet
 from decouple import config
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     try:
         encrypted_password = sys.argv[1]
         assert isinstance(encrypted_password, str)
@@ -12,11 +12,11 @@ if __name__ == "__main__":
         assert isinstance(fernet_key, str)
         print("Fernet Key Provided")
 
-        fernet = Fernet(fernet_key) 
+        fernet = Fernet(fernet_key)
         print("Fernet Initialized")
         print(encrypted_password)
         dycrypted_password = fernet.decrypt(encrypted_password.encode())
 
         print("Decrypted Password: ", dycrypted_password.decode())
-    except: 
+    except:
         print("No Encrypted Password Arg Provided or Invalid Format Provided")
