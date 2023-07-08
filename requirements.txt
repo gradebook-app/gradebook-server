@@ -23,7 +23,7 @@ Flask-PyMongo==2.3.0
 cryptography==41.0.1
 dnspython==2.1.0
 rq==1.15.1
-rq_scheduler==0.11.0
+rq-scheduler==0.13.1
 redis==4.6.0
 numpy==1.22.4
 exponent_server_sdk==2.0.0

@@ -6,16 +6,19 @@ from rq.job import Job
 from rq_scheduler import Scheduler
 from decouple import config
 
-listen =  ["default", "low"]
+listen = ["default", "low"]
 
-try: 
+try:
     queue_idx = sys.argv.index("-q")
     queues = sys.argv[queue_idx + 1].strip().split(",")
-    if len(queues): listen = queues
-except ValueError: 
+    if len(queues):
+        listen = queues
+except ValueError:
     print(f"Queue (-q) flag not specified, listening for jobs on queues: {listen}")
-except IndexError: 
-    print(f"Queue (-q) flag specified without a value, listening for jobs on queues: {listen}")
+except IndexError:
+    print(
+        f"Queue (-q) flag specified without a value, listening for jobs on queues: {listen}"
+    )
 
 redis_url = config("REDIS_URL", "redis://localhost:6379")
 
@@ -26,7 +29,7 @@ queue = Queue(
 scheduler = Scheduler(queue=queue, connection=conn)
 
 
-def black_hole(job : Job, *_exc_info):
+def black_hole(job: Job, *_exc_info):
     print("Job Cancelled due to exception: ", job.id, _exc_info)
     job.cancel()
     job.cleanup(60 * 60 * 24 * 2)
