@@ -374,47 +374,50 @@ class GenesisService:
             )
 
         html = pq(response.text)
-
         rows = html.find("td:nth-child(1) > table.list:nth-child(1)").children("tr")
 
-        try:
-            if genesisId["schoolDistrict"] == "sbstudents.org":
-                locker = SBService.get_locker_code(rows)
-            else:
-                locker = pq(rows[7]).find("td:nth-child(2)").text()
-        except Exception:
-            locker = None
+        school = pq(rows[1]).text()
+        studentId, stateId = pq(rows[2].find("td")).children()
+        studentId = pq(studentId.find("span")).text()
+        stateId = pq(stateId.find("span")).text()
+     
+        # try:
+        #     if genesisId["schoolDistrict"] == "sbstudents.org":
+        #         locker = SBService.get_locker_code(rows)
+        #     else:
+        #         locker = pq(rows[7]).find("td:nth-child(2)").text()
+        # except Exception:
+        #     locker = None
 
-        try:
-            if genesisId["schoolDistrict"] == "sbstudents.org":
-                lunchBalance = SBService.get_lunch_balance(rows)
-            else:
-                lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
-        except Exception:
-            lunchBalance = None
+        # try:
+        #     if genesisId["schoolDistrict"] == "sbstudents.org":
+        #         lunchBalance = SBService.get_lunch_balance(rows)
+        #     else:
+        #         lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
+        # except Exception:
+        #     lunchBalance = None
 
-        rows = html.find("td:nth-child(2) > table.list:nth-child(1)").children("tr")
-        name = pq(rows[0]).find("td:nth-child(1)").text()
+        # rows = html.find("td:nth-child(2) > table.list:nth-child(1)").children("tr")
+        # name = pq(rows[0]).find("td:nth-child(1)").text()
 
-        grade = pq(pq(rows[0]).find("td:nth-child(2)").children("span")[1]).text()
-        studentId = pq(rows[1]).find("td > span:nth-child(1)").text()
-        stateId = pq(rows[1]).find("td > span:nth-child(2)").text()
-        school = pq(rows[1]).find("td").remove("span").html().split("|")[0].strip()
+        # grade = pq(pq(rows[0]).find("td:nth-child(2)").children("span")[1]).text()
 
-        try:
-            grade = int(grade)
-        except Exception:
-            grade = None
+        # try:
+        #     grade = int(grade)
+        # except Exception:
+        #     grade = None
 
         return {
-            "name": name,
-            "grade": grade,
             "studentId": studentId,
             "stateId": stateId,
             "school": school,
-            "lunchBalance": lunchBalance,
-            "locker": locker,
         }
+        # return {
+        #     "name": name,
+        #     "grade": grade,
+        #     "lunchBalance": lunchBalance,
+        #     "locker": locker,
+        # }
 
     def query_schedule(self, genesisId, query):
         genesis = genesis_config[genesisId["schoolDistrict"]]
