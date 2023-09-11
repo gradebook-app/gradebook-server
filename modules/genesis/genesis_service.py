@@ -380,6 +380,10 @@ class GenesisService:
         studentId, stateId = pq(rows[2].find("td")).children()
         studentId = pq(studentId.find("span")).text()
         stateId = pq(stateId.find("span")).text()
+
+        rows = pq(html.find("table.notecard")).find("table.list").children("tr")
+
+        lunch_balance =  lunch_balance = pq(rows[9]).find("td:nth-child(2)").text()
      
         # try:
         #     if genesisId["schoolDistrict"] == "sbstudents.org":
@@ -388,14 +392,6 @@ class GenesisService:
         #         locker = pq(rows[7]).find("td:nth-child(2)").text()
         # except Exception:
         #     locker = None
-
-        # try:
-        #     if genesisId["schoolDistrict"] == "sbstudents.org":
-        #         lunchBalance = SBService.get_lunch_balance(rows)
-        #     else:
-        #         lunchBalance = pq(rows[6]).find("td:nth-child(2)").text()
-        # except Exception:
-        #     lunchBalance = None
 
         # rows = html.find("td:nth-child(2) > table.list:nth-child(1)").children("tr")
         # name = pq(rows[0]).find("td:nth-child(1)").text()
@@ -411,6 +407,7 @@ class GenesisService:
             "studentId": studentId,
             "stateId": stateId,
             "school": school,
+            "lunchBalance": lunch_balance
         }
         # return {
         #     "name": name,
