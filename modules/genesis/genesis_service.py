@@ -6,6 +6,7 @@ from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
 from utils.grade import grade
+from utils.parser import parse
 from urllib.parse import parse_qs
 from flask import Response
 import aiohttp
@@ -383,38 +384,22 @@ class GenesisService:
 
         rows = pq(html.find("table.notecard")).find("table.list").children("tr")
 
-        lunch_balance =  lunch_balance = pq(rows[9]).find("td:nth-child(2)").text()
-     
-        # try:
-        #     if genesisId["schoolDistrict"] == "sbstudents.org":
-        #         locker = SBService.get_locker_code(rows)
-        #     else:
-        #         locker = pq(rows[7]).find("td:nth-child(2)").text()
-        # except Exception:
-        #     locker = None
+        name = pq(rows[1]).find("td:nth-child(2)").text()
+        grade = pq(rows[1]).find("td:nth-child(3) > span:last-child").text()
+        lunch_balance = pq(rows[9]).find("td:nth-child(2)").text()
 
-        # rows = html.find("td:nth-child(2) > table.list:nth-child(1)").children("tr")
-        # name = pq(rows[0]).find("td:nth-child(1)").text()
-
-        # grade = pq(pq(rows[0]).find("td:nth-child(2)").children("span")[1]).text()
-
-        # try:
-        #     grade = int(grade)
-        # except Exception:
-        #     grade = None
+        locker = parse(lambda: pq(rows[10]).find("td:nth-child(2)").text())
+        grade = parse(lambda: int(grade))
 
         return {
+            "name": name,
+            "grade": grade,
+            "locker": locker,
             "studentId": studentId,
             "stateId": stateId,
             "school": school,
             "lunchBalance": lunch_balance
         }
-        # return {
-        #     "name": name,
-        #     "grade": grade,
-        #     "lunchBalance": lunchBalance,
-        #     "locker": locker,
-        # }
 
     def query_schedule(self, genesisId, query):
         genesis = genesis_config[genesisId["schoolDistrict"]]
