@@ -126,10 +126,7 @@ class GenesisService:
 
             html = response.text
             parser = pq(html)
-            classes = parser.find("table.list")
-            all_classes = list(classes.items('tr[class="listrowodd"]')) + list(
-                classes.items('tr[class="listroweven"]')
-            )
+            all_classes = parser.find("div.itemContainer").children("div.twoColFlex")
 
             marking_period_options = parser.find(
                 "select[name='fldMarkingPeriod']"
@@ -148,42 +145,36 @@ class GenesisService:
             classes = []
 
             for school_class in all_classes:
-                teacher = pq(school_class.children("td")[1]).remove("b").text()
-
-                final_grade = str()
-                final_grade_raw = (
-                    pq(school_class.children("td")[2]).find("table tr > td").text()
-                )
-                if (
-                    not "no grades" in final_grade_raw.lower()
-                    and not "not graded" in final_grade_raw.lower()
-                ):
-                    final_grade = final_grade_raw.split("%")[0]
-
-                raw_grade = school_class.find(
-                    "td[title='View Course Summary'] > div"
+                raw_grade = pq(school_class).find(
+                    "div.gradebookGrid div:nth-child(1) span"
                 ).text()
-                courseIdRaw = school_class.find("td.cellLeft > span.categorytab").attr(
-                    "onclick"
-                )
+        
+                courseIdRaw = pq(school_class).find(
+                    "div.gradebookGrid div:nth-child(2) div "
+                ).attr("onclick")
 
                 try:
                     courseIds = re.findall("'.*'", courseIdRaw)
+
                     [courseId, sectionId] = (
-                        courseIds[0].split(",")[1].replace("'", "").split(":")
+                        courseIds[0].replace("'", "").split(",")
                     )
                 except Exception:
                     [courseId, sectionId] = ["", ""]
-
                 try:
                     grade = int(raw_grade[:-1])
                 except:
                     grade = None
 
-                class_name = school_class.find("span.categorytab > font > u").text()
-                grade_letter = school_class.find(
-                    "td[title='View Course Summary'] ~ td"
-                ).text()
+
+                class_name = pq(school_class).find("div.twoColGridItem div:nth-child(1) span").text()
+                teacher = pq(school_class).find("div.twoColGridItem div:nth-child(2) div").text().strip()
+
+                grade_letter = pq(school_class).find(
+                    "div.gradebookGrid div:nth-child(2) div"
+                ).remove("div").text()
+
+                final_grade = None
 
                 classes.append(
                     {
