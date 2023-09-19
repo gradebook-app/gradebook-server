@@ -215,22 +215,22 @@ class GenesisService:
         genesis = genesis_config[genesisId["schoolDistrict"]]
         root_url = genesis["root"]
         main_route = genesis["main"]
-
+     
         studentId = genesisId["studentId"]
-
+      
         markingPeriod = (
             "allMP" if query["markingPeriod"] == "FG" else query["markingPeriod"]
         )
         courseId = query["courseId"]
         sectionId = query["sectionId"]
-
+      
         course_and_section = f"{courseId}:{sectionId}" if courseId and sectionId else ""
-
+      
         try:
             status = query["status"] if "status" in dict(query).keys() else ""
         except KeyError:
             status = ""
-
+        
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={course_and_section}&status={status}"
         cookies = {"JSESSIONID": genesisId["token"]}
 
@@ -247,56 +247,44 @@ class GenesisService:
                     401,
                 )
             parser = pq(text)
+            
             table = parser.find("table.list")
             assignments = table.children('tr:not([class="listheading"])')
 
             data = []
 
-            for assignment in assignments:
-                message = None
+            for assignment in assignments:                
                 columns = pq(assignment).children("td")
-                marking_period = pq(columns[0]).text()
-                date = pq(columns[1]).text()
-                [courseElement, teacherElement] = pq(columns[2]).items("div")
-                course = courseElement.text()
-                teacher = teacherElement.text()
-                category = pq(columns[3]).remove("div").text()
-                name = pq(columns[4]).remove("div").text()
+                # marking_period = pq(columns[0]).text()
+                date = pq(columns[0]).text().replace("\n", " ")
+       
+                course = pq(columns[1]).find("div:nth-child(1)").text()
+                teacher = pq(columns[1]).find("div:nth-child(2)").text()
+       
+                category = pq(pq(columns[2]).children("div")[0]).text()
+                name = pq(columns[2]).find("b").text()
 
-                try:
-                    points_raw = columns[5]
-                    _, points_text = (
-                        pq(i).text() for i in pq(points_raw).find("div").children("div")
-                    )
-                    if points_text:
-                        message = points_text
-                except Exception:
-                    pass
-
-                gradeDivs = pq(columns[5]).children("div")
+                grade_raw = pq(columns[3]).find("div").text()
                 percentage = None
 
-                if gradeDivs.length:
+                if grade_raw:
                     try:
-                        percentage = float(pq(gradeDivs[-1]).remove("div").text()[:-1])
+                        percentage = float(grade_raw[:-1])
                     except ValueError:
                         percentage = None
 
-                points = pq(columns[5]).remove("div").text()
-
-                comment = pq(columns[6]).text()
-                comment = comment.replace('"', "") if comment else ""
-
+                points = pq(columns[3]).remove("div").text()
+    
                 data.append(
                     {
-                        "markingPeriod": marking_period,
+                        "markingPeriod": markingPeriod,
                         "date": date,
-                        "comment": comment,
+                        "comment": None,
                         "course": course,
                         "teacher": teacher,
                         "category": category,
                         "name": name,
-                        "message": message,
+                        "message": None,
                         "grade": {
                             "points": points,
                             "percentage": percentage,
