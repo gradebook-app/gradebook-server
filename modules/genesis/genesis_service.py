@@ -454,21 +454,24 @@ class GenesisService:
             gradeLevel = None
 
             if len(columns) > 1:
-                year = pq(columns[0]).text()
-                gradeLevel = pq(columns[1]).text()
-
+                year = pq(columns[0]).find("div:nth-child(2)").text()
+                gradeLevel = pq(columns[0]).find("div:nth-child(1)").text()
+    
                 if gradeLevel:
                     try:
-                        gradeLevel = int(gradeLevel)
-                    except ValueError:
+                        gradeLevel = int(re.findall(r'\d+', gradeLevel)[0])
+                    except ValueError or IndexError:
                         gradeLevel = None
                 else:
                     gradeLevel = None
-
+             
             if not gradeLevel is None:
-                name = pq(columns[2]).text()
-                gradeLetter = pq(columns[4]).text()
-                pointsEarned = pq(columns[-1]).text()
+                name = pq(columns[1]).find("div:nth-child(2)").text()
+                gradeLetter = pq(columns[2]).text()
+          
+                pointsEarned = str(pq(columns[-1]).find("div:nth-child(2)"))
+                br_index = pointsEarned.index("<br/>")
+                pointsEarned = float(pointsEarned[br_index + 5: br_index + pointsEarned[br_index:].index("</div")])
 
                 try:
                     percent = float(gradeLetter)
@@ -494,7 +497,7 @@ class GenesisService:
                     )
                     weights[gradeLevel].append(
                         {
-                            "weight": float(pointsEarned),
+                            "weight": pointsEarned,
                             "name": name,
                         }
                     )
