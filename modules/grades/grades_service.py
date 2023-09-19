@@ -577,7 +577,7 @@ class GradesService:
             token = user["notificationToken"]
             if not token or token is None or not send_notifications:
                 return
-            for assignment_notificatinon in docs[:3]:
+            for assignment_notificatinon in docs[:10]: # max notifications that can be sent
                 low_queue.enqueue_call(
                     func=self.send_assignment_update,
                     args=(token, assignment_notificatinon),
