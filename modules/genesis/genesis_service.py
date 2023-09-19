@@ -264,7 +264,7 @@ class GenesisService:
                 category = pq(pq(columns[2]).children("div")[0]).text()
                 name = pq(columns[2]).find("b").text()
 
-                grade_raw = pq(columns[3]).find("div").text()
+                grade_raw = pq(columns[3]).find("div:last-child").text()
                 percentage = None
 
                 if grade_raw:
