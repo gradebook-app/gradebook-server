@@ -5,7 +5,7 @@ from requests.utils import quote as encodeURL
 from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
-from utils.grade import grade
+from utils.grade import letter_to_number, number_to_letter
 from utils.parser import parse
 from urllib.parse import parse_qs
 from flask import Response
@@ -161,11 +161,11 @@ class GenesisService:
                     )
                 except Exception:
                     [courseId, sectionId] = ["", ""]
+
                 try:
-                    grade = int(raw_grade[:-1])
+                    grade = int(raw_grade[:-1]) if genesisId["schoolDistrict"] == "sbstudents.org" else float(raw_grade[:-1])
                 except:
                     grade = None
-
 
                 class_name = pq(school_class).find("div.twoColGridItem div:nth-child(1) span").text()
                 teacher = pq(school_class).find("div.twoColGridItem div:nth-child(2) div").text().strip()
@@ -173,6 +173,8 @@ class GenesisService:
                 grade_letter = pq(school_class).find(
                     "div.gradebookGrid div:nth-child(2) div"
                 ).remove("div").text()
+
+                if not grade_letter and grade: grade_letter = number_to_letter(grade)
 
                 final_grade = None
 
@@ -488,7 +490,7 @@ class GenesisService:
                             "grade": {
                                 "percentage": percent
                                 if percent
-                                else grade(gradeLetter),
+                                else letter_to_number(gradeLetter),
                                 "grade": percent if percent else gradeLetter,
                             },
                             "name": name,

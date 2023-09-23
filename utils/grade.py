@@ -1,4 +1,4 @@
-def grade(letter):
+def letter_to_number(letter):
     if letter.upper() == "A+":
         return 100
     elif letter.upper() == "A":
@@ -27,3 +27,17 @@ def grade(letter):
         return 64
     else:
         return 64
+
+def number_to_letter(number):
+    if number >= 98: return "A+"
+    elif number >= 93: return "A"
+    elif number >= 90: return "A-"
+    elif number >= 87: return "B+"
+    elif number >= 83: return "B"
+    elif number >= 80: return "B-"
+    elif number >= 77: return "C+"
+    elif number >= 73: return "C"
+    elif number >= 70: return "C"
+    elif number >= 67: return "D+"
+    elif number >= 65: return "D"
+    else: return "F" 
