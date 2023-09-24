@@ -125,7 +125,7 @@ class AuthService:
                 ]
             )
 
-            user = list(user)[0]
+            user = user.next()
 
             data = {
                 "token": genesisToken,
@@ -135,6 +135,10 @@ class AuthService:
                 "studentId": studentId,
             }
             accessToken = self.create_token(data)
+
+            user["createdAt"] = str(user["createdAt"])
+            user["loggedInAt"] = str(user["loggedInAt"])
+
             response = {
                 "accessToken": accessToken,
                 "user": user if user else {},
