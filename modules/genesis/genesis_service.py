@@ -370,7 +370,11 @@ class GenesisService:
         grade = pq(rows[1]).find("td:nth-child(3) > span:last-child").text()
         lunch_balance = pq(rows[9]).find("td:nth-child(2)").text()
 
-        locker = parse(lambda: pq(rows[10]).find("td:nth-child(2)").text())
+        if genesisId["schoolDistrict"] == "sbstudents.org": 
+            locker = parse(lambda: pq(rows[10]).find("td:nth-child(2)").text())
+        else: 
+            locker = parse(lambda: pq(rows[10]).find("td:nth-child(2)").text())
+
         grade = parse(lambda: int(grade))
 
         return {

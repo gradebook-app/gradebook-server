@@ -17,13 +17,13 @@ class MTService:
             try: 
                 teacher = class_data[0]
             except: 
-                teacher = None
+                teacher = ""
 
             try: 
                 room = class_data[1]
             except: 
-                room = None
-
+                room = ""
+                
             classes.append(
                 {
                     "period": period,
