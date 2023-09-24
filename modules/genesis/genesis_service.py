@@ -5,6 +5,7 @@ from requests.utils import quote as encodeURL
 from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
+from modules.genesis.mt_service import MTService
 from utils.grade import letter_to_number, number_to_letter
 from utils.parser import parse
 from urllib.parse import parse_qs
@@ -404,26 +405,13 @@ class GenesisService:
         courses = html.items('tr:not([class="listheading"])')
         classes = []
 
-        for course in courses:
-            sections = course.items("div")
-
-            period = next(sections).text()
-            start_time = next(sections).text()
-            end_time = next(sections).text()
-            name = next(sections).text()
-            teacher = next(sections).text()
-            room = next(sections).text()
-
-            classes.append(
-                {
-                    "period": period,
-                    "startTime": start_time,
-                    "endTime": end_time,
-                    "name": name,
-                    "teacher": teacher,
-                    "room": room,
-                }
-            )
+        if genesisId["schoolDistrict"] == "sbstudents.org": 
+            try: 
+                classes = SBService.get_highschool_schedule(courses)
+            except: 
+                classes = MTService.get_schedule(courses)
+        else: 
+            classes = MTService.get_schedule(courses)
 
         return {"courses": classes, "header": header}
 
