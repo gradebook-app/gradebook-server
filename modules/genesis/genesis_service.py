@@ -32,7 +32,7 @@ class GenesisService:
             async with session.post(*args, **kwargs) as response:
                 return response
 
-    async def get_access_token(self, userId, password, school_district):
+    async def get_access_token(self, userId, password, school_district, specifiedStudentId):
         genesis = genesis_config[school_district]
         email = f"{userId}"
 
@@ -82,7 +82,7 @@ class GenesisService:
                     {print("Error Getting Student ID", e)}
 
             del auth_response
-            return [genesisToken, userId, access, studentId]
+            return [genesisToken, userId, access, specifiedStudentId or studentId]
 
     def access_granted(self, html):
         title = pq(html).find("title").text()

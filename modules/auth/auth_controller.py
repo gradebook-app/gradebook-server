@@ -16,10 +16,12 @@ def login(body):
         body["schoolDistrict"],
     )
     notificationToken = body.get("notificationToken", None)
+    specifiedStudentId = body.get("studentId", None)
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     response = loop.run_until_complete(
-        auth_service.login(userId, password, school_district, notificationToken)
+        auth_service.login(userId, password, school_district, notificationToken, specifiedStudentId)
     )
     loop.close()
     return response
