@@ -20,10 +20,10 @@ class MTService:
                 teacher = ""
 
             try: 
-                room = class_data[1]
+                room = class_data[1].replace("Room:", "")
             except: 
                 room = ""
-                
+
             classes.append(
                 {
                     "period": period,
