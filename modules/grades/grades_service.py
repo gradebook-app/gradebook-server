@@ -434,6 +434,7 @@ class GradesService:
         email = user["email"]
         school_district = user["schoolDistrict"]
         password = user["pass"]
+        storedStudentId = user["studentId"]
 
         auth_service = AuthService()
         genesis_service = GenesisService()
@@ -446,7 +447,7 @@ class GradesService:
             access,
             studentId,
         ] = await genesis_service.get_access_token(
-            email, dycrypted_password, school_district
+            email, dycrypted_password, school_district, storedStudentId, 
         )
 
         if not access:
