@@ -72,6 +72,7 @@ class AuthService:
                         "$set": {
                             "loggedInAt": current_timestamp,
                             "status": "active",
+                            "studentId": studentId,
                             "pass": encrypted_pass,
                             "notificationToken": notificationToken,
                         }

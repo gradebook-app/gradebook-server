@@ -6,6 +6,7 @@ from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
 from modules.genesis.mt_service import MTService
+from modules.user.types.user import GeneralUserAccount
 from utils.grade import letter_to_number, number_to_letter
 from utils.parser import parse
 from urllib.parse import parse_qs
@@ -90,6 +91,46 @@ class GenesisService:
             return False
         else:
             return True
+
+    def get_accounts(self, genesisId) -> GeneralUserAccount: 
+        genesis = genesis_config[genesisId["schoolDistrict"]]
+
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+        studentId = genesisId["studentId"]
+
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&studentid={studentId}&action=form"
+
+        cookies = {"JSESSIONID": genesisId["token"]}
+
+        response = requests.get(url, cookies=cookies, headers=global_headers)
+
+        if not self.access_granted(response.text):
+            return Response(
+                "Session Expired",
+                401,
+            )
+        if not response.text:  
+            return { "accounts": [] }
+        
+        html = response.text
+        parser = pq(html)
+
+        accounts = []
+
+        raw_accounts = parser.find("#selectableStudents ul").children("li") 
+        for raw_account in raw_accounts:
+            name_raw = pq(raw_account).find("a > div").children("div")[1]
+            name = pq(name_raw).remove("div").text()
+            student_id_raw = pq(raw_account).find("a").attr("onclick")
+            student_id = re.findall("'.*'", student_id_raw)[0].replace("'", "")
+
+            accounts.append(GeneralUserAccount(
+                studentId=student_id, 
+                name=name
+            ))
+
+        return { "accounts": accounts }
 
     def get_grades(self, query, genesisId):
         genesis = genesis_config[genesisId["schoolDistrict"]]
