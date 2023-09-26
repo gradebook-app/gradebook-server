@@ -12,6 +12,10 @@ user_service = UserService()
 def get_user_account(genesisId):
     return user_service.get_user_account(genesisId)
 
+@user.route("/accounts", methods=["GET"])
+@genesisId
+def get_accounts(genesisId):
+    return user_service.get_accounts(genesisId)
 
 @user.route("/setNotificationToken", methods=["POST"])
 @body

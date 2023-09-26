@@ -28,6 +28,9 @@ class UserService:
     def get_user_account(self, genesisId):
         return self.genesisService.account_details(genesisId)
 
+    def get_accounts(self, genesisId):
+        return self.genesisService.get_accounts(genesisId)
+
     def get_schedule(self, genesisId, query):
         response = self.genesisService.query_schedule(genesisId, query)
         return response

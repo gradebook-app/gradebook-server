@@ -6,6 +6,7 @@ from pyquery import PyQuery as pq
 import re
 from constants.genesis import genesis_config
 from modules.genesis.mt_service import MTService
+from modules.user.types.user import GeneralUserAccount
 from utils.grade import letter_to_number, number_to_letter
 from utils.parser import parse
 from urllib.parse import parse_qs
@@ -32,7 +33,7 @@ class GenesisService:
             async with session.post(*args, **kwargs) as response:
                 return response
 
-    async def get_access_token(self, userId, password, school_district):
+    async def get_access_token(self, userId, password, school_district, specifiedStudentId):
         genesis = genesis_config[school_district]
         email = f"{userId}"
 
@@ -82,7 +83,7 @@ class GenesisService:
                     {print("Error Getting Student ID", e)}
 
             del auth_response
-            return [genesisToken, userId, access, studentId]
+            return [genesisToken, userId, access, specifiedStudentId or studentId]
 
     def access_granted(self, html):
         title = pq(html).find("title").text()
@@ -91,10 +92,49 @@ class GenesisService:
         else:
             return True
 
+    def get_accounts(self, genesisId) -> GeneralUserAccount: 
+        genesis = genesis_config[genesisId["schoolDistrict"]]
+
+        root_url = genesis["root"]
+        main_route = genesis["main"]
+        studentId = genesisId["studentId"]
+
+        url = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary&studentid={studentId}&action=form"
+
+        cookies = {"JSESSIONID": genesisId["token"]}
+
+        response = requests.get(url, cookies=cookies, headers=global_headers)
+
+        if not self.access_granted(response.text):
+            return Response(
+                "Session Expired",
+                401,
+            )
+        if not response.text:  
+            return { "accounts": [] }
+        
+        html = response.text
+        parser = pq(html)
+
+        accounts = []
+
+        raw_accounts = parser.find("#selectableStudents ul").children("li") 
+        for raw_account in raw_accounts:
+            name_raw = pq(raw_account).find("a > div").children("div")[1]
+            name = pq(name_raw).remove("div").text()
+            student_id_raw = pq(raw_account).find("a").attr("onclick")
+            student_id = re.findall("'.*'", student_id_raw)[0].replace("'", "")
+
+            accounts.append(GeneralUserAccount(
+                studentId=student_id, 
+                name=name
+            ))
+
+        return { "accounts": accounts }
+
     def get_grades(self, query, genesisId):
         genesis = genesis_config[genesisId["schoolDistrict"]]
         markingPeriod = query["markingPeriod"]
-
         root_url = genesis["root"]
         main_route = genesis["main"]
         studentId = genesisId["studentId"]
@@ -171,23 +211,26 @@ class GenesisService:
                 class_name = pq(school_class).find("div.twoColGridItem div:nth-child(1) span").text()
                 teacher = pq(school_class).find("div.twoColGridItem div:nth-child(2) div").text().strip()
 
-                grade_letter = pq(school_class).find(
+                grade_letter:str = pq(school_class).find(
                     "div.gradebookGrid div:nth-child(2) div"
                 ).remove("div").text()
+                
+                projected = False
+
+                if grade_letter:
+                    fg_text = "*PROJECTED"
+                    if fg_text in grade_letter: projected = True
+                    grade_letter = grade_letter.replace(fg_text, "").strip()
 
                 if not grade_letter and grade: grade_letter = number_to_letter(grade)
-
-                final_grade = None
 
                 classes.append(
                     {
                         "teacher": teacher,
                         "grade": {
-                            "percentage": grade if grade else final_grade,
+                            "percentage": grade,
                             "letter": grade_letter,
-                            "projected": bool(
-                                final_grade
-                            ),  # Doesn't work for Montegomery
+                            "projected": projected, # Doesn't work for Montgomery 
                         },
                         "name": class_name,
                         "courseId": courseId,
