@@ -135,7 +135,6 @@ class GenesisService:
     def get_grades(self, query, genesisId):
         genesis = genesis_config[genesisId["schoolDistrict"]]
         markingPeriod = query["markingPeriod"]
-
         root_url = genesis["root"]
         main_route = genesis["main"]
         studentId = genesisId["studentId"]
@@ -212,23 +211,26 @@ class GenesisService:
                 class_name = pq(school_class).find("div.twoColGridItem div:nth-child(1) span").text()
                 teacher = pq(school_class).find("div.twoColGridItem div:nth-child(2) div").text().strip()
 
-                grade_letter = pq(school_class).find(
+                grade_letter:str = pq(school_class).find(
                     "div.gradebookGrid div:nth-child(2) div"
                 ).remove("div").text()
+                
+                projected = False
+
+                if grade_letter:
+                    fg_text = "*PROJECTED"
+                    if fg_text in grade_letter: projected = True
+                    grade_letter = grade_letter.replace(fg_text, "").strip()
 
                 if not grade_letter and grade: grade_letter = number_to_letter(grade)
-
-                final_grade = None
 
                 classes.append(
                     {
                         "teacher": teacher,
                         "grade": {
-                            "percentage": grade if grade else final_grade,
+                            "percentage": grade,
                             "letter": grade_letter,
-                            "projected": bool(
-                                final_grade
-                            ),  # Doesn't work for Montegomery
+                            "projected": projected, # Doesn't work for Montgomery 
                         },
                         "name": class_name,
                         "courseId": courseId,
