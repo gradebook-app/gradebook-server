@@ -10,17 +10,65 @@ def user_aggregation(limit, skip):
         {
             "$lookup": {
                 "from": "assignments",
-                "localField": "_id",
-                "foreignField": "userId",
-                "as": "assignments",
+                "let": {
+                    "userId": "$_id",
+                    "studentId": "$studentId"
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    {
+                                        "$eq": [
+                                            "$userId",
+                                            "$$userId"
+                                        ], 
+                                    },
+                                    {
+                                        "$eq": [
+                                            "$studentId",
+                                            "$$studentId"
+                                        ]   
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "as": "assignments"
             }
         },
-        {
+           {
             "$lookup": {
                 "from": "grades",
-                "localField": "_id",
-                "foreignField": "userId",
-                "as": "grades",
+                "let": {
+                    "userId": "$_id",
+                    "studentId": "$studentId"
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    {
+                                        "$eq": [
+                                            "$userId",
+                                            "$$userId"
+                                        ], 
+                                    },
+                                    {
+                                        "$eq": [
+                                            "$studentId",
+                                            "$$studentId"
+                                        ]   
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "as": "grades"
             }
         },
         {

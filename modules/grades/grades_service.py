@@ -60,9 +60,10 @@ class GradesService:
     @staticmethod
     def set_course_weight(courseId, sectionId, weight, genesisId):
         userId = genesisId["userId"]
+        studentId = genesisId["studentId"]
         grade_repo = GradesRepository(db=connect_db())
         response = grade_repo.update_course_weight(
-            courseId, sectionId, weight, ObjectId(userId)
+            courseId, sectionId, weight, ObjectId(userId), studentId=studentId
         )
         return response
 
@@ -298,6 +299,7 @@ class GradesService:
             {
                 "userId": user["_id"],
                 "markingPeriod": mp,
+                "studentId": user["studentId"]
             }
         )
 
@@ -373,6 +375,7 @@ class GradesService:
                 "userId": ObjectId(user["_id"]),
                 "unweightedGPA": user["unweightedGPA"],
                 "weightedGPA": user["weightedGPA"],
+                "studentId": user["studentId"],
                 "timestamp": time.time(),
             }
         )
@@ -398,7 +401,7 @@ class GradesService:
 
         for course in courses:
             change = grade_repo.find_one_and_update(
-                userId=user["_id"], mp=mp, course=course
+                userId=user["_id"], mp=mp, course=course, studentId=user["studentId"]
             )
 
             try:
@@ -560,6 +563,7 @@ class GradesService:
             docs.append(
                 {
                     "userId": user["_id"],
+                    "studentId": user["studentId"],
                     "name": i["name"],
                     "course": i["course"],
                     "markingPeriod": i["markingPeriod"],
