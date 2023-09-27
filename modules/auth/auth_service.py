@@ -30,8 +30,10 @@ class AuthService:
         return {}
 
     async def login(self, email, password, school_district, notificationToken, specifiedStudentId):
-        email = email.strip()
+        email = email.strip().lower()
         user_modal = db.get_collection("users")
+        doc = user_modal.find_one({"email": email, "status": { "$ne": "deleted" }})
+        studentId = doc["studentId"] if doc else None
 
         [
             genesisToken,
@@ -39,7 +41,7 @@ class AuthService:
             access,
             studentId,
         ] = await self.genesis_service.get_access_token(
-            email, password, school_district, specifiedStudentId
+            email, password, school_district, specifiedStudentId or studentId
         )
         user = {}
 
@@ -47,7 +49,6 @@ class AuthService:
 
         if access:
             encrypted_pass = self.encrypt_password(password)
-            doc = user_modal.find_one({"email": email})
             if doc == None:
                 inserted_doc = user_modal.insert_one(
                     {
@@ -74,7 +75,7 @@ class AuthService:
                             "status": "active",
                             "studentId": studentId,
                             "pass": encrypted_pass,
-                            "notificationToken": notificationToken,
+                            "notificationToken": notificationToken if notificationToken else doc["notificationToken"],
                         }
                     },
                 )
@@ -95,13 +96,17 @@ class AuthService:
                     {
                         "$lookup": {
                             "from": "gpa-history",
-                            "let": {"userId": "$_id"},
+                            "let": {
+                                "userId": "$_id",
+                                "studentId": "$studentId"
+                            },
                             "pipeline": [
                                 {
                                     "$match": {
                                         "$expr": {
                                             "$and": [
                                                 {"$eq": ["$userId", "$$userId"]},
+                                                {"$eq": ["$studentId", "$$studentId"]},
                                                 {
                                                     "$gte": [
                                                         "$timestamp",
