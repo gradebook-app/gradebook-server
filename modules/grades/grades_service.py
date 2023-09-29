@@ -47,8 +47,9 @@ class GradesService:
 
     def course_weight(self, courseId, sectionId, genesisId):
         userId = genesisId["userId"]
+        studentId = genesisId["studentId"]
         grade_repo = GradesRepository(db=connect_db())
-        response = grade_repo.find_course_weight(courseId, sectionId, ObjectId(userId))
+        response = grade_repo.find_course_weight(courseId, sectionId, ObjectId(userId), studentId)
         weight = dict(response).get("weight", None) if response else None
 
         if weight is None and response:

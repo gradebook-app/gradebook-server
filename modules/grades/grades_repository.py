@@ -12,12 +12,13 @@ class GradesRepository:
         response = self.grades_model.find(filter)
         return response
 
-    def find_course_weight(self, courseId, sectionId, userId: ObjectId):
+    def find_course_weight(self, courseId, sectionId, userId: ObjectId, studentId):
         response = self.grades_model.find_one(
             {
                 "courseId": courseId,
                 "sectionId": sectionId,
                 "userId": userId,
+                "studentId": studentId
             }
         )
         return response
