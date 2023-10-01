@@ -67,16 +67,32 @@ class AuthService:
                 )
                 mongoUserId = inserted_doc.inserted_id
             elif isinstance(doc, dict):
+                updated_values = {
+                    "loggedInAt": current_timestamp,
+                    "status": "active",
+                    "studentId": studentId,
+                    "pass": encrypted_pass,
+                    "notificationToken": notificationToken if notificationToken else doc["notificationToken"],
+                }
+
+                if specifiedStudentId != None: 
+                    from modules.grades.grades_service import GradesService
+                    grades_service = GradesService()
+
+                    gpa = grades_service.query_live_gpa(genesisId={
+                        "token": genesisToken,
+                        "email": userId,
+                        "schoolDistrict": school_district,
+                        "userId": str(ObjectId(doc["_id"])),
+                        "studentId": studentId,
+                    }, save=False)
+
+                    updated_values = updated_values | gpa
+
                 updated_doc = user_modal.find_one_and_update(
                     {"email": email},
                     {
-                        "$set": {
-                            "loggedInAt": current_timestamp,
-                            "status": "active",
-                            "studentId": studentId,
-                            "pass": encrypted_pass,
-                            "notificationToken": notificationToken if notificationToken else doc["notificationToken"],
-                        }
+                        "$set": updated_values
                     },
                 )
 
