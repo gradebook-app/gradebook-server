@@ -93,7 +93,7 @@ class GradesService:
             },
         )
 
-    def query_live_gpa(self, genesisId):
+    def query_live_gpa(self, genesisId, save=True):
         try:
             response = self.query_user_grade(genesisId)
             userId = genesisId["userId"]
@@ -106,14 +106,15 @@ class GradesService:
 
             gpa = self.calculate_gpa(response, manual_weights=grades)
 
-            user = {"_id": userId}
-            unweighted = gpa["unweightedGPA"]
-            weighted = gpa["weightedGPA"]
-            low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
+            if save: 
+                user = {"_id": userId}
+                unweighted = gpa["unweightedGPA"]
+                weighted = gpa["weightedGPA"]
+                low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
 
-            del unweighted
-            del weighted
-            del response
+                del unweighted
+                del weighted
+                del response
 
             return gpa
         except Exception as e:
