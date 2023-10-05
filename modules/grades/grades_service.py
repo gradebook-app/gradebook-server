@@ -28,6 +28,7 @@ class GradesService:
 
     def grades(self, query, genesisId):
         response = self.genesisService.get_grades(query, genesisId)
+        print(response)
         return response
 
     def course_weight_by_name(self, name: str) -> str:
