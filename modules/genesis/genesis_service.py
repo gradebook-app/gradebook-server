@@ -299,9 +299,15 @@ class GenesisService:
 
             data = []
 
-            for assignment in assignments:                
+            for assignment in assignments:         
+                comment:str = None
+                try: 
+                    comment = pq(assignment).find(".customDialogContainer div").text()
+                    comment = comment.replace("\"", "").strip()
+                except Exception: 
+                    pass
+
                 columns = pq(assignment).children("td")
-                # marking_period = pq(columns[0]).text()
                 date = pq(columns[0]).text().replace("\n", " ")
        
                 course = pq(columns[1]).find("div:nth-child(1)").text()
@@ -325,7 +331,7 @@ class GenesisService:
                     {
                         "markingPeriod": markingPeriod,
                         "date": date,
-                        "comment": None,
+                        "comment": comment,
                         "course": course,
                         "teacher": teacher,
                         "category": category,
