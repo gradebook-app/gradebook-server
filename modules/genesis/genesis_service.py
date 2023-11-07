@@ -320,7 +320,7 @@ class GenesisService:
                 name = pq(columns[2]).find("b").text()
 
                 pq(assignment).remove("div[title='Teacher Comment']")
-                grade_raw:str = pq(columns[3]).find("div:nth-child(1)").text()
+                grade_raw:str = pq(columns[3]).find("div").text()
                 percentage = None
 
                 if grade_raw:
