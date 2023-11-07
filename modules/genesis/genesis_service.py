@@ -301,9 +301,12 @@ class GenesisService:
 
             for assignment in assignments:         
                 comment:str = None
-                try: 
-                    comment = pq(assignment).find(".customDialogContainer div").text()
-                    comment = comment.replace("\"", "").strip()
+                try:
+                    comment = pq(pq(assignment).find("div[title='Teacher Comment']").children()[1]).text()
+                    
+                    if not comment: 
+                        comment = pq(assignment).find(".customDialogContainer div").text()
+                        comment = comment.replace("\"", "").strip()
                 except Exception: 
                     pass
 
@@ -316,7 +319,8 @@ class GenesisService:
                 category = pq(pq(columns[2]).children("div")[0]).text()
                 name = pq(columns[2]).find("b").text()
 
-                grade_raw:str = pq(columns[3]).find("div").text()
+                pq(assignment).remove("div[title='Teacher Comment']")
+                grade_raw:str = pq(columns[3]).find("div:nth-child(1)").text()
                 percentage = None
 
                 if grade_raw:

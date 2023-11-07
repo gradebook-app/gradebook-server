@@ -734,7 +734,7 @@ class GradesService:
         try:
             persist_time = time.time()
 
-            limit = 25  # find optimal number of users to query at once
+            limit = 35  # find optimal number of users to query at once
 
             response = user_repository.query_aggregated_users(limit=limit, skip=skip)
             next_skip = skip + limit
