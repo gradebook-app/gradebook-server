@@ -1,4 +1,5 @@
 import gc
+import sys
 import traceback
 import requests
 from requests.utils import quote as encodeURL
@@ -53,7 +54,7 @@ class GenesisService:
                 allow_redirects=False,
             )
             access = False
-            print(auth_response.headers)
+            print(auth_response.headers, file=sys.stderr)
             if not auth_response.headers["Location"].__contains__(auth_route):
                 access = True
 
