@@ -88,8 +88,8 @@ class GenesisService:
             access = False
             if "Location" in auth_response.headers and not auth_response.headers["Location"].__contains__(auth_route):
                 access = True
-            else: 
-                print(auth_response.headers, auth_response.cookies)
+            #else: 
+            print("Response", auth_response.headers, auth_response.cookies)
            
             if access:
                 try:
