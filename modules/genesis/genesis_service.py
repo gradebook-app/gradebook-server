@@ -67,7 +67,7 @@ class GenesisService:
             )
            
             access = False
-            if not "Location" in auth_response.headers or not auth_response.headers["Location"].__contains__(auth_route):
+            if "Location" in auth_response.headers and not auth_response.headers["Location"].__contains__(auth_route):
                 access = True
 
             genesisToken = None
