@@ -61,19 +61,6 @@ class GenesisService:
                 headers=headers,
                 allow_redirects=False,
             )
-       
-            auth_response = await self.fetch(
-                session,
-                method="POST",
-                url=auth_url,
-                headers=headers,
-                data=data,
-                allow_redirects=False,
-            )
-           
-            access = False
-            if "Location" in auth_response.headers and not auth_response.headers["Location"].__contains__(auth_route):
-                access = True
 
             genesisToken = None
             studentId = None
@@ -87,6 +74,22 @@ class GenesisService:
                 cookies[key] = morsel.value
 
             genesisToken = cookies.get("JSESSIONID", None)
+            lastVisit = cookies.get("lastvisit", None)
+       
+            auth_response = await self.fetch(
+                session,
+                method="POST",
+                url=auth_url,
+                headers={ **headers, "Cookie": f"JSESSIONID={genesisToken};lastvisit={lastVisit}"},
+                data=data,
+                allow_redirects=False,
+            )
+    
+            access = False
+            if "Location" in auth_response.headers and not auth_response.headers["Location"].__contains__(auth_route):
+                access = True
+            else: 
+                print(auth_response.headers, auth_response.cookies0)
            
             if access:
                 try:
