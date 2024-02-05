@@ -50,7 +50,7 @@ class GenesisService:
         data = {'j_username': email, 'j_password': password }
 
         async with aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(limit=64, verify_ssl=False)
+            connector=aiohttp.TCPConnector()
         ) as session:
             headers = self.get_global_headers()
 
