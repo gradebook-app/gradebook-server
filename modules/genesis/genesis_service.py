@@ -41,7 +41,8 @@ class GenesisService:
         root_url = genesis["root"]
         auth_route = genesis["auth"]
 
-        auth_url = f"{root_url}{auth_route}?j_username={encodeURL(email)}&j_password={encodeURL(password)}"
+        auth_url = f"{root_url}{auth_route}"
+        data = {'j_username': email, 'j_password': password }
 
         async with aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(limit=64, verify_ssl=False)
@@ -51,10 +52,10 @@ class GenesisService:
                 method="POST",
                 url=auth_url,
                 headers=global_headers,
+                data=data,
                 allow_redirects=False,
             )
             access = False
-            print(auth_response.headers, file=sys.stderr)
             if not auth_response.headers["Location"].__contains__(auth_route):
                 access = True
 
@@ -78,6 +79,7 @@ class GenesisService:
                         cookies=cookies,
                         headers=global_headers,
                     )
+                    
                     login_url_params = parse_qs(login_res.url.split("?")[1])
                     studentId = login_url_params["studentid"][0]
                     del login_res
@@ -140,10 +142,10 @@ class GenesisService:
         root_url = genesis["root"]
         main_route = genesis["main"]
         studentId = genesisId["studentId"]
-
+        jession_id = query.get("token", genesisId["token"])
+       
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={studentId}&mpToView={markingPeriod}"
-
-        cookies = {"JSESSIONID": genesisId["token"]}
+        cookies = {"JSESSIONID": jession_id }
 
         response = requests.get(url, cookies=cookies, headers=global_headers)
 
