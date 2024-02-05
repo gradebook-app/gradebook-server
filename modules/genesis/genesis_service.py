@@ -40,13 +40,23 @@ class GenesisService:
 
         root_url = genesis["root"]
         auth_route = genesis["auth"]
+        login_route = genesis["login"]
 
+        landing_url = f"{root_url}{login_route}"
         auth_url = f"{root_url}{auth_route}"
         data = {'j_username': email, 'j_password': password }
 
         async with aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(limit=64, verify_ssl=False)
         ) as session:
+            landing_response, _ = await self.fetch(
+                session,
+                method="GET",
+                url=landing_url,
+                headers=global_headers,
+                allow_redirects=False,
+            )
+       
             auth_response = await self.fetch(
                 session,
                 method="POST",
@@ -55,14 +65,15 @@ class GenesisService:
                 data=data,
                 allow_redirects=False,
             )
+           
             access = False
-            if not "Location" in auth_response.headers or not auth_response.headers["Location"].__contains__(auth_route):
+            if "Location" in auth_response.headers and not auth_response.headers["Location"].__contains__(auth_route):
                 access = True
 
             genesisToken = None
             studentId = None
 
-            cookie_str = auth_response.cookies
+            cookie_str = landing_response.cookies
             cookie = SimpleCookie()
             cookie.load(cookie_str)
 
@@ -70,7 +81,7 @@ class GenesisService:
             for key, morsel in cookie.items():
                 cookies[key] = morsel.value
 
-            genesisToken = cookies["JSESSIONID"]
+            genesisToken = cookies.get("JSESSIONID", None)
 
             if access:
                 try:
