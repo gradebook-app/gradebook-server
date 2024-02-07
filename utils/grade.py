@@ -28,16 +28,29 @@ def letter_to_number(letter):
     else:
         return 64
 
+
 def number_to_letter(number):
-    if number >= 98: return "A+"
-    elif number >= 93: return "A"
-    elif number >= 90: return "A-"
-    elif number >= 87: return "B+"
-    elif number >= 83: return "B"
-    elif number >= 80: return "B-"
-    elif number >= 77: return "C+"
-    elif number >= 73: return "C"
-    elif number >= 70: return "C"
-    elif number >= 67: return "D+"
-    elif number >= 65: return "D"
-    else: return "F" 
+    if number >= 98:
+        return "A+"
+    elif number >= 93:
+        return "A"
+    elif number >= 90:
+        return "A-"
+    elif number >= 87:
+        return "B+"
+    elif number >= 83:
+        return "B"
+    elif number >= 80:
+        return "B-"
+    elif number >= 77:
+        return "C+"
+    elif number >= 73:
+        return "C"
+    elif number >= 70:
+        return "C"
+    elif number >= 67:
+        return "D+"
+    elif number >= 65:
+        return "D"
+    else:
+        return "F"

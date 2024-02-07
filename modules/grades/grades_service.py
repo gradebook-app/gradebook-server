@@ -49,7 +49,9 @@ class GradesService:
         userId = genesisId["userId"]
         studentId = genesisId["studentId"]
         grade_repo = GradesRepository(db=connect_db())
-        response = grade_repo.find_course_weight(courseId, sectionId, ObjectId(userId), studentId)
+        response = grade_repo.find_course_weight(
+            courseId, sectionId, ObjectId(userId), studentId
+        )
         weight = dict(response).get("weight", None) if response else None
 
         if weight is None and response:
@@ -106,11 +108,13 @@ class GradesService:
 
             gpa = self.calculate_gpa(response, manual_weights=grades)
 
-            if save: 
+            if save:
                 user = {"_id": userId}
                 unweighted = gpa["unweightedGPA"]
                 weighted = gpa["weightedGPA"]
-                low_queue.enqueue(f=self.save_gpa, args=(user, unweighted, weighted, None))
+                low_queue.enqueue(
+                    f=self.save_gpa, args=(user, unweighted, weighted, None)
+                )
 
                 del unweighted
                 del weighted
@@ -298,11 +302,7 @@ class GradesService:
         courses = grades["courses"]
 
         courses_stored = grade_repo.find_one(
-            {
-                "userId": user["_id"],
-                "markingPeriod": mp,
-                "studentId": user["studentId"]
-            }
+            {"userId": user["_id"], "markingPeriod": mp, "studentId": user["studentId"]}
         )
 
         for course_stored in courses_stored:
@@ -452,7 +452,10 @@ class GradesService:
             access,
             studentId,
         ] = await genesis_service.get_access_token(
-            email, dycrypted_password, school_district, storedStudentId, 
+            email,
+            dycrypted_password,
+            school_district,
+            storedStudentId,
         )
 
         if not access:
@@ -584,7 +587,9 @@ class GradesService:
             token = user["notificationToken"]
             if not token or token is None or not send_notifications:
                 return
-            for assignment_notificatinon in docs[:10]: # max notifications that can be sent
+            for assignment_notificatinon in docs[
+                :10
+            ]:  # max notifications that can be sent
                 low_queue.enqueue_call(
                     func=self.send_assignment_update,
                     args=(token, assignment_notificatinon),

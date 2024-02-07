@@ -1,7 +1,7 @@
 # Specific HTML Parsing Functions for South Brunswick Genesis
 class SBService:
     @staticmethod
-    def get_highschool_schedule(courses) -> list: 
+    def get_highschool_schedule(courses) -> list:
         classes = []
 
         for course in courses:

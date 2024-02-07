@@ -1,27 +1,28 @@
 from pyquery import PyQuery as pq
 
-class MTService: 
+
+class MTService:
     @staticmethod
-    def get_schedule(courses) -> list: 
+    def get_schedule(courses) -> list:
         classes = []
 
         for course in courses:
             sections = pq(course).children("td")
 
-            period = pq(sections[0]).find("b").text()   
+            period = pq(sections[0]).find("b").text()
             start_time, end_time = pq(sections[0]).remove("b").text().split("\n")
-            
-            name = pq(sections[1]).find("b").text()   
+
+            name = pq(sections[1]).find("b").text()
             class_data = pq(sections[1]).remove("b").text().split("\n")
 
-            try: 
+            try:
                 teacher = class_data[0]
-            except: 
+            except:
                 teacher = ""
 
-            try: 
+            try:
                 room = class_data[1].replace("Room:", "")
-            except: 
+            except:
                 room = ""
 
             classes.append(
@@ -34,6 +35,5 @@ class MTService:
                     "room": room,
                 }
             )
-            
 
         return classes

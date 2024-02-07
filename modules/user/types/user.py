@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 
+
 @dataclass
-class GeneralUserAccount(): 
+class GeneralUserAccount:
     name: str
     studentId: str
 
+
 @dataclass
-class GeneralUserAccountRO(): 
+class GeneralUserAccountRO:
     accounts: list[GeneralUserAccount]

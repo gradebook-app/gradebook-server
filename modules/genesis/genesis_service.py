@@ -21,13 +21,14 @@ global_headers = {
     "Content-Type": "application/x-www-form-urlencoded",
 }
 
+
 class GenesisService:
     def __init__(self):
         pass
 
-    def get_global_headers(self): 
-        ua = UserAgent(browsers=['safari', 'chrome'])
-        return { **global_headers, "User-Agent": ua.random }
+    def get_global_headers(self):
+        ua = UserAgent(browsers=["safari", "chrome"])
+        return {**global_headers, "User-Agent": ua.random}
 
     async def fetch(self, session, method="GET", *args, **kwargs):
         if method == "GET":
@@ -37,7 +38,9 @@ class GenesisService:
             async with session.post(*args, **kwargs) as response:
                 return response
 
-    async def get_access_token(self, userId, password, school_district, specifiedStudentId):
+    async def get_access_token(
+        self, userId, password, school_district, specifiedStudentId, jsession_id
+    ):
         genesis = genesis_config[school_district]
         email = f"{userId}"
 
@@ -47,11 +50,13 @@ class GenesisService:
 
         landing_url = f"{root_url}{login_route}"
         auth_url = f"{root_url}{auth_route}"
-        data = {'j_username': email, 'j_password': password }
+        data = {"j_username": email, "j_password": password}
 
-        async with aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector()
-        ) as session:
+        if jsession_id:
+            print("errro")
+            return [jsession_id, userId, True, specifiedStudentId]
+
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector()) as session:
             headers = self.get_global_headers()
 
             landing_response, _ = await self.fetch(
@@ -75,22 +80,25 @@ class GenesisService:
 
             genesisToken = cookies.get("JSESSIONID", None)
             lastVisit = cookies.get("lastvisit", None)
-       
+
             auth_response = await self.fetch(
                 session,
                 method="POST",
                 url=auth_url,
-                headers={ **headers, "Cookie": f"JSESSIONID={genesisToken};lastvisit={lastVisit}"},
+                headers={
+                    **headers,
+                    "Cookie": f"JSESSIONID={genesisToken};lastvisit={lastVisit}",
+                },
                 data=data,
                 allow_redirects=False,
             )
-    
+
             access = False
-            if "Location" in auth_response.headers and not auth_response.headers["Location"].__contains__(auth_route):
+            if "Location" in auth_response.headers and not auth_response.headers[
+                "Location"
+            ].__contains__(auth_route):
                 access = True
-            #else: 
-            print("Response", auth_response.headers, auth_response.cookies)
-           
+
             if access:
                 try:
                     login_res = requests.get(
@@ -98,7 +106,7 @@ class GenesisService:
                         cookies=cookies,
                         headers=headers,
                     )
-                    
+
                     login_url_params = parse_qs(login_res.url.split("?")[1])
                     studentId = login_url_params["studentid"][0]
                     del login_res
@@ -115,7 +123,7 @@ class GenesisService:
         else:
             return True
 
-    def get_accounts(self, genesisId) -> GeneralUserAccount: 
+    def get_accounts(self, genesisId) -> GeneralUserAccount:
         genesis = genesis_config[genesisId["schoolDistrict"]]
 
         root_url = genesis["root"]
@@ -133,27 +141,24 @@ class GenesisService:
                 "Session Expired",
                 401,
             )
-        if not response.text:  
-            return { "accounts": [] }
-        
+        if not response.text:
+            return {"accounts": []}
+
         html = response.text
         parser = pq(html)
 
         accounts = []
 
-        raw_accounts = parser.find("#selectableStudents ul").children("li") 
+        raw_accounts = parser.find("#selectableStudents ul").children("li")
         for raw_account in raw_accounts:
             name_raw = pq(raw_account).find("a > div").children("div")[1]
             name = pq(name_raw).remove("div").text()
             student_id_raw = pq(raw_account).find("a").attr("onclick")
             student_id = re.findall("'.*'", student_id_raw)[0].replace("'", "")
 
-            accounts.append(GeneralUserAccount(
-                studentId=student_id, 
-                name=name
-            ))
+            accounts.append(GeneralUserAccount(studentId=student_id, name=name))
 
-        return { "accounts": accounts }
+        return {"accounts": accounts}
 
     def get_grades(self, query, genesisId):
         genesis = genesis_config[genesisId["schoolDistrict"]]
@@ -162,9 +167,9 @@ class GenesisService:
         main_route = genesis["main"]
         studentId = genesisId["studentId"]
         jession_id = query.get("token", genesisId["token"])
-       
+
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=weeklysummary&action=form&studentid={studentId}&mpToView={markingPeriod}"
-        cookies = {"JSESSIONID": jession_id }
+        cookies = {"JSESSIONID": jession_id}
 
         response = requests.get(url, cookies=cookies, headers=self.get_global_headers())
 
@@ -209,43 +214,59 @@ class GenesisService:
             classes = []
 
             for school_class in all_classes:
-                raw_grade = pq(school_class).find(
-                    "div.gradebookGrid div:nth-child(1) span"
-                ).text()
-        
-                courseIdRaw = pq(school_class).find(
-                    "div.gradebookGrid"
-                ).attr("onclick")
+                raw_grade = (
+                    pq(school_class)
+                    .find("div.gradebookGrid div:nth-child(1) span")
+                    .text()
+                )
+
+                courseIdRaw = pq(school_class).find("div.gradebookGrid").attr("onclick")
 
                 try:
                     courseIds = re.findall("'.*'", courseIdRaw)
 
-                    [courseId, sectionId] = (
-                        courseIds[0].replace("'", "").split(",")
-                    )
+                    [courseId, sectionId] = courseIds[0].replace("'", "").split(",")
                 except Exception:
                     [courseId, sectionId] = ["", ""]
 
                 try:
-                    grade = int(raw_grade[:-1]) if genesisId["schoolDistrict"] == "sbstudents.org" else float(raw_grade[:-1])
+                    grade = (
+                        int(raw_grade[:-1])
+                        if genesisId["schoolDistrict"] == "sbstudents.org"
+                        else float(raw_grade[:-1])
+                    )
                 except:
                     grade = None
 
-                class_name = pq(school_class).find("div.twoColGridItem div:nth-child(1) span").text()
-                teacher = pq(school_class).find("div.twoColGridItem div:nth-child(2) div").text().strip()
+                class_name = (
+                    pq(school_class)
+                    .find("div.twoColGridItem div:nth-child(1) span")
+                    .text()
+                )
+                teacher = (
+                    pq(school_class)
+                    .find("div.twoColGridItem div:nth-child(2) div")
+                    .text()
+                    .strip()
+                )
 
-                grade_letter:str = pq(school_class).find(
-                    "div.gradebookGrid div:nth-child(2) div"
-                ).remove("div").text()
-                
+                grade_letter: str = (
+                    pq(school_class)
+                    .find("div.gradebookGrid div:nth-child(2) div")
+                    .remove("div")
+                    .text()
+                )
+
                 projected = False
 
                 if grade_letter:
                     fg_text = "*PROJECTED"
-                    if fg_text in grade_letter: projected = True
+                    if fg_text in grade_letter:
+                        projected = True
                     grade_letter = grade_letter.replace(fg_text, "").strip()
 
-                if not grade_letter and grade: grade_letter = number_to_letter(grade)
+                if not grade_letter and grade:
+                    grade_letter = number_to_letter(grade)
 
                 classes.append(
                     {
@@ -253,7 +274,7 @@ class GenesisService:
                         "grade": {
                             "percentage": grade,
                             "letter": grade_letter,
-                            "projected": projected, # Doesn't work for Montgomery 
+                            "projected": projected,  # Doesn't work for Montgomery
                         },
                         "name": class_name,
                         "courseId": courseId,
@@ -284,22 +305,22 @@ class GenesisService:
         genesis = genesis_config[genesisId["schoolDistrict"]]
         root_url = genesis["root"]
         main_route = genesis["main"]
-     
+
         studentId = genesisId["studentId"]
-      
+
         markingPeriod = (
             "allMP" if query["markingPeriod"] == "FG" else query["markingPeriod"]
         )
         courseId = query["courseId"]
         sectionId = query["sectionId"]
-      
+
         course_and_section = f"{courseId}:{sectionId}" if courseId and sectionId else ""
-      
+
         try:
             status = query["status"] if "status" in dict(query).keys() else ""
         except KeyError:
             status = ""
-        
+
         url = f"{root_url}{main_route}?tab1=studentdata&tab2=gradebook&tab3=listassignments&studentid={studentId}&action=form&dateRange={markingPeriod}&courseAndSection={course_and_section}&status={status}"
         cookies = {"JSESSIONID": genesisId["token"]}
 
@@ -307,7 +328,11 @@ class GenesisService:
             connector=aiohttp.TCPConnector(limit=64, verify_ssl=False)
         ) as session:
             _, text = await self.fetch(
-                session, method="GET", url=url, cookies=cookies, headers=self.get_global_headers()
+                session,
+                method="GET",
+                url=url,
+                cookies=cookies,
+                headers=self.get_global_headers(),
             )
 
             if not self.access_granted(text):
@@ -316,34 +341,40 @@ class GenesisService:
                     401,
                 )
             parser = pq(text)
-            
+
             table = parser.find("table.list")
             assignments = table.children('tr:not([class="listheading"])')
 
             data = []
 
-            for assignment in assignments:         
-                comment:str = None
+            for assignment in assignments:
+                comment: str = None
                 try:
-                    comment = pq(pq(assignment).find("div[title='Teacher Comment']").children()[1]).text()
-                    
-                    if not comment: 
-                        comment = pq(assignment).find(".customDialogContainer div").text()
-                        comment = comment.replace("\"", "").strip()
-                except Exception: 
+                    comment = pq(
+                        pq(assignment)
+                        .find("div[title='Teacher Comment']")
+                        .children()[1]
+                    ).text()
+
+                    if not comment:
+                        comment = (
+                            pq(assignment).find(".customDialogContainer div").text()
+                        )
+                        comment = comment.replace('"', "").strip()
+                except Exception:
                     pass
 
                 columns = pq(assignment).children("td")
                 date = pq(columns[0]).text().replace("\n", " ")
-       
+
                 course = pq(columns[1]).find("div:nth-child(1)").text()
                 teacher = pq(columns[1]).find("div:nth-child(2)").text()
-       
+
                 category = pq(pq(columns[2]).children("div")[0]).text()
                 name = pq(columns[2]).find("b").text()
 
                 pq(assignment).remove("div[title='Teacher Comment']")
-                grade_raw:str = pq(columns[3]).find("div").text()
+                grade_raw: str = pq(columns[3]).find("div").text()
                 percentage = None
 
                 if grade_raw:
@@ -354,7 +385,7 @@ class GenesisService:
                         percentage = None
 
                 points = pq(columns[3]).remove("div").text()
-    
+
                 data.append(
                     {
                         "markingPeriod": markingPeriod,
@@ -445,15 +476,15 @@ class GenesisService:
 
         name = pq(rows[1]).find("td:nth-child(2)").text()
         grade = pq(rows[1]).find("td:nth-child(3) > span:last-child").text()
-       
-        if genesisId["schoolDistrict"] == "sbstudents.org": 
+
+        if genesisId["schoolDistrict"] == "sbstudents.org":
             lunch_balance = pq(rows[9]).find("td:nth-child(2)").text()
-        else: 
+        else:
             lunch_balance = pq(rows[11]).find("td:nth-child(2)").text()
 
-        if genesisId["schoolDistrict"] == "sbstudents.org": 
+        if genesisId["schoolDistrict"] == "sbstudents.org":
             locker = parse(lambda: pq(rows[10]).find("td:nth-child(2)").text())
-        else: 
+        else:
             locker = parse(lambda: pq(rows[12]).find("td:nth-child(2)").text())
 
         grade = parse(lambda: int(grade))
@@ -465,7 +496,7 @@ class GenesisService:
             "studentId": studentId,
             "stateId": stateId,
             "school": school,
-            "lunchBalance": lunch_balance
+            "lunchBalance": lunch_balance,
         }
 
     def query_schedule(self, genesisId, query):
@@ -490,12 +521,12 @@ class GenesisService:
         courses = html.items('tr:not([class="listheading"])')
         classes = []
 
-        if genesisId["schoolDistrict"] == "sbstudents.org": 
-            try: 
+        if genesisId["schoolDistrict"] == "sbstudents.org":
+            try:
                 classes = SBService.get_highschool_schedule(courses)
-            except: 
+            except:
                 classes = MTService.get_schedule(courses)
-        else: 
+        else:
             classes = MTService.get_schedule(courses)
 
         return {"courses": classes, "header": header}
@@ -531,22 +562,26 @@ class GenesisService:
             if len(columns) > 1:
                 year = pq(columns[0]).find("div:nth-child(2)").text()
                 gradeLevel = pq(columns[0]).find("div:nth-child(1)").text()
-    
+
                 if gradeLevel:
                     try:
-                        gradeLevel = int(re.findall(r'\d+', gradeLevel)[0])
+                        gradeLevel = int(re.findall(r"\d+", gradeLevel)[0])
                     except ValueError or IndexError:
                         gradeLevel = None
                 else:
                     gradeLevel = None
-             
+
             if not gradeLevel is None:
                 name = pq(columns[1]).find("div:nth-child(2)").text()
                 gradeLetter = pq(columns[2]).text()
-          
+
                 pointsEarned = str(pq(columns[-1]).find("div:nth-child(2)"))
                 br_index = pointsEarned.index("<br/>")
-                pointsEarned = float(pointsEarned[br_index + 5: br_index + pointsEarned[br_index:].index("</div")])
+                pointsEarned = float(
+                    pointsEarned[
+                        br_index + 5 : br_index + pointsEarned[br_index:].index("</div")
+                    ]
+                )
 
                 try:
                     percent = float(gradeLetter)

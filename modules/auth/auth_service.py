@@ -29,10 +29,18 @@ class AuthService:
         )
         return {}
 
-    async def login(self, email, password, school_district, notificationToken, specifiedStudentId):
+    async def login(
+        self,
+        email,
+        password,
+        school_district,
+        notificationToken,
+        specifiedStudentId,
+        jsession_id,
+    ):
         email = email.strip().lower()
         user_modal = db.get_collection("users")
-        doc = user_modal.find_one({"email": email, "status": { "$ne": "deleted" }})
+        doc = user_modal.find_one({"email": email, "status": {"$ne": "deleted"}})
         studentId = doc["studentId"] if doc else None
 
         [
@@ -41,7 +49,11 @@ class AuthService:
             access,
             studentId,
         ] = await self.genesis_service.get_access_token(
-            email, password, school_district, specifiedStudentId or studentId
+            email,
+            password,
+            school_district,
+            specifiedStudentId or studentId,
+            jsession_id,
         )
         user = {}
 
@@ -72,28 +84,32 @@ class AuthService:
                     "status": "active",
                     "studentId": studentId,
                     "pass": encrypted_pass,
-                    "notificationToken": notificationToken if notificationToken else doc["notificationToken"],
+                    "notificationToken": notificationToken
+                    if notificationToken
+                    else doc["notificationToken"],
                 }
 
-                if specifiedStudentId != None: 
+                if specifiedStudentId != None:
                     from modules.grades.grades_service import GradesService
+
                     grades_service = GradesService()
 
-                    gpa = grades_service.query_live_gpa(genesisId={
-                        "token": genesisToken,
-                        "email": userId,
-                        "schoolDistrict": school_district,
-                        "userId": str(ObjectId(doc["_id"])),
-                        "studentId": studentId,
-                    }, save=False)
+                    gpa = grades_service.query_live_gpa(
+                        genesisId={
+                            "token": genesisToken,
+                            "email": userId,
+                            "schoolDistrict": school_district,
+                            "userId": str(ObjectId(doc["_id"])),
+                            "studentId": studentId,
+                        },
+                        save=False,
+                    )
 
                     updated_values = updated_values | gpa
 
                 updated_doc = user_modal.find_one_and_update(
                     {"email": email},
-                    {
-                        "$set": updated_values
-                    },
+                    {"$set": updated_values},
                 )
 
                 mongoUserId = ObjectId(updated_doc["_id"])
@@ -112,10 +128,7 @@ class AuthService:
                     {
                         "$lookup": {
                             "from": "gpa-history",
-                            "let": {
-                                "userId": "$_id",
-                                "studentId": "$studentId"
-                            },
+                            "let": {"userId": "$_id", "studentId": "$studentId"},
                             "pipeline": [
                                 {
                                     "$match": {

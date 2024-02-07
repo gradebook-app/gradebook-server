@@ -1,5 +1,5 @@
-def parse(func, fallback=None): 
-    try: 
+def parse(func, fallback=None):
+    try:
         return func()
-    except Exception: 
-        return fallback 
+    except Exception:
+        return fallback

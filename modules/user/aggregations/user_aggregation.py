@@ -10,65 +10,43 @@ def user_aggregation(limit, skip):
         {
             "$lookup": {
                 "from": "assignments",
-                "let": {
-                    "userId": "$_id",
-                    "studentId": "$studentId"
-                },
+                "let": {"userId": "$_id", "studentId": "$studentId"},
                 "pipeline": [
                     {
                         "$match": {
                             "$expr": {
                                 "$and": [
                                     {
-                                        "$eq": [
-                                            "$userId",
-                                            "$$userId"
-                                        ], 
+                                        "$eq": ["$userId", "$$userId"],
                                     },
-                                    {
-                                        "$eq": [
-                                            "$studentId",
-                                            "$$studentId"
-                                        ]   
-                                    }
+                                    {"$eq": ["$studentId", "$$studentId"]},
                                 ]
                             }
                         }
                     }
                 ],
-                "as": "assignments"
+                "as": "assignments",
             }
         },
-           {
+        {
             "$lookup": {
                 "from": "grades",
-                "let": {
-                    "userId": "$_id",
-                    "studentId": "$studentId"
-                },
+                "let": {"userId": "$_id", "studentId": "$studentId"},
                 "pipeline": [
                     {
                         "$match": {
                             "$expr": {
                                 "$and": [
                                     {
-                                        "$eq": [
-                                            "$userId",
-                                            "$$userId"
-                                        ], 
+                                        "$eq": ["$userId", "$$userId"],
                                     },
-                                    {
-                                        "$eq": [
-                                            "$studentId",
-                                            "$$studentId"
-                                        ]   
-                                    }
+                                    {"$eq": ["$studentId", "$$studentId"]},
                                 ]
                             }
                         }
                     }
                 ],
-                "as": "grades"
+                "as": "grades",
             }
         },
         {

@@ -18,7 +18,7 @@ class GradesRepository:
                 "courseId": courseId,
                 "sectionId": sectionId,
                 "userId": userId,
-                "studentId": studentId
+                "studentId": studentId,
             }
         )
         return response
@@ -27,9 +27,16 @@ class GradesRepository:
         response = self.grades_model.find({"userId": userId, "weight": {"$ne": None}})
         return response
 
-    def update_course_weight(self, courseId, sectionId, weight, userId: ObjectId, studentId=None):
+    def update_course_weight(
+        self, courseId, sectionId, weight, userId: ObjectId, studentId=None
+    ):
         response = self.grades_model.find_one_and_update(
-            {"userId": userId, "sectionId": sectionId, "courseId": courseId, "studentId": studentId},
+            {
+                "userId": userId,
+                "sectionId": sectionId,
+                "courseId": courseId,
+                "studentId": studentId,
+            },
             {"$set": {"weight": weight}},
             return_document=ReturnDocument.AFTER,
         )
@@ -47,7 +54,7 @@ class GradesRepository:
                 "markingPeriod": mp,
                 "courseId": course["courseId"],
                 "sectionId": course["sectionId"],
-                "studentId": studentId
+                "studentId": studentId,
             },
             {
                 "$set": {
