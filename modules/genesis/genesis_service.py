@@ -69,7 +69,7 @@ class GenesisService:
                 return [jsession_id, userId, True, specifiedStudentId or studentId]
             except Exception as e:
                 if specifiedStudentId: 
-                    return [jsession_id, userId, True, specifiedStudentId]
+                    return [jsession_id, userId, False, specifiedStudentId]
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector()) as session:
             landing_response, _ = await self.fetch(
