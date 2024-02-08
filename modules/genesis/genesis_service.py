@@ -21,7 +21,6 @@ global_headers = {
     "Content-Type": "application/x-www-form-urlencoded",
 }
 
-
 class GenesisService:
     def __init__(self):
         pass
@@ -51,14 +50,28 @@ class GenesisService:
         landing_url = f"{root_url}{login_route}"
         auth_url = f"{root_url}{auth_route}"
         data = {"j_username": email, "j_password": password}
-
+       
+        headers = self.get_global_headers()
         if jsession_id:
-            print("errro")
-            return [jsession_id, userId, True, specifiedStudentId]
+            main_route = genesis["main"]
+            # Validate Client Side retrieved JSESSIONID
+            try:
+                home_route = f"{root_url}{main_route}?tab1=studentdata&tab2=studentsummary"
+                login_res = requests.get(
+                    home_route,
+                    cookies={ "JSESSIONID": jsession_id},
+                    headers=headers,
+                )
+ 
+                login_url_params = parse_qs(login_res.url.split("?")[1])
+                studentId = login_url_params["studentid"][0]
+
+                return [jsession_id, userId, True, specifiedStudentId or studentId]
+            except Exception as e:
+                if specifiedStudentId: 
+                    return [jsession_id, userId, True, specifiedStudentId]
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector()) as session:
-            headers = self.get_global_headers()
-
             landing_response, _ = await self.fetch(
                 session,
                 method="GET",
