@@ -513,7 +513,7 @@ class GradesService:
         all_mp_grades = response[0]
 
         for mp_grades in all_mp_grades:
-            self.save_grades(user, mp_grades)
+            self.save_grades(user, mp_grades, notification=False)
 
         gpa = self.calculate_gpa(response, manual_weights=user["grades"])
         unweighted = user["unweightedGPA"]

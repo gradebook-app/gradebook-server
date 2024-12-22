@@ -233,7 +233,7 @@ class GenesisService:
                     .text()
                 )
 
-                courseIdRaw = pq(school_class).find("div.gradebookGrid").attr("onclick")
+                courseIdRaw = pq(school_class).attr("onclick")
 
                 try:
                     courseIds = re.findall("'.*'", courseIdRaw)

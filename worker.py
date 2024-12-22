@@ -22,6 +22,9 @@ except IndexError:
 
 redis_url = config("REDIS_URL", "redis://localhost:6379")
 
+if not isinstance(redis_url, str):
+    raise ValueError("REDIS_URL must be a string")
+
 conn = redis.from_url(redis_url)
 queue = Queue(
     connection=conn,
